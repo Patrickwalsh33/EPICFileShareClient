@@ -11,6 +11,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 add_executable(MyQtApp
         main.cpp
+        loginpage.cpp
+        login.ui
 )
 
 target_link_libraries(MyQtApp
