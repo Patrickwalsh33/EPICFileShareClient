@@ -1,0 +1,30 @@
+# --- Build artifacts ---
+/cmake-build-*/
+*.exe
+*.dll
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.pdb
+
+# --- Qt generated files ---
+Makefile
+CMakeCache.txt
+CMakeFiles/
+moc_*
+ui_*
+qrc_*
+
+# --- CLion and JetBrains project files ---
+.idea/
+*.iml
+
+# --- OS-specific ---
+.DS_Store          # macOS
+Thumbs.db          # Windows
+
+# --- Deployment / packaging ---
+*.app
+*.dSYM/
