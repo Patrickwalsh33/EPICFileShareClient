@@ -5,4 +5,16 @@
 #ifndef PASSWORDHASHING_H
 #define PASSWORDHASHING_H
 
-#endif //PASSWORDHASHING_H
+#include <string>
+
+class PasswordHashing {
+public:
+    PasswordHashing();
+    ~PasswordHashing();
+
+    std::string hashPassword(const std::string& password);
+    bool verifyPassword(const std::string& hash, const std::string& password);
+};
+
+#endif // PASSWORD_HASHING_H
+
