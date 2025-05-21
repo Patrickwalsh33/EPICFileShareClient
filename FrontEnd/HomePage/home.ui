@@ -78,7 +78,7 @@
     <string notr="true">background: lightblue; color:black;</string>
    </property>
    <property name="text">
-    <string>Click here to Registor</string>
+    <string>Click here to Register</string>
    </property>
   </widget>
  </widget>
