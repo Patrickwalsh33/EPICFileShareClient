@@ -15,6 +15,8 @@ add_executable(MyQtApp
         FrontEnd/LoginPage/loginpage.ui
         FrontEnd/HomePage/home.cpp
         FrontEnd/HomePage/home.ui
+        FrontEnd/RegistorPage/registorpage.cpp
+        FrontEnd/RegistorPage/registorpage.ui
 )
 
 target_link_libraries(MyQtApp

@@ -3,6 +3,7 @@
 
 
 #include "../LoginPage/loginpage.h"
+#include "../RegistorPage/registorpage.h"
 
 #include <QDebug>
 
@@ -38,6 +39,11 @@ void HomePage::on_navigateToLoginButton_clicked(){
 void HomePage::on_navigateToRegisterButton_clicked()
 {
     qDebug() << "navigateToRegisterButton_clicked on HomePage";
-    //Implement navigation to RegistrationPage
-    this->accept(); // For now, behave like login button for flow
+    
+    RegistorPage registorDialog(nullptr);
+    registorDialog.setAttribute(Qt::WA_DeleteOnClose);
+    
+    this->accept(); // Close HomePage
+    
+    registorDialog.exec(); // Show RegistorPage modally
 }
