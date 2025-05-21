@@ -1,10 +1,14 @@
 #include <QApplication>
-#include <QPushButton>
+#include "FrontEnd/LoginPage/loginpage.h"
+#include "FrontEnd/HomePage/home.h"
+#include <QDebug>
 
-int main(int argc, char *argv[]) {
-    QApplication a(argc, argv);
-    QPushButton button("Hello world! Checking new branch deletion", nullptr);
-    button.resize(200, 100);
-    button.show();
-    return QApplication::exec();
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+
+    HomePage homePage;
+    homePage.show();
+
+    return app.exec();
 }
