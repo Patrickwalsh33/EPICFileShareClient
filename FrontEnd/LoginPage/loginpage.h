@@ -2,7 +2,6 @@
 #define LOGINPAGE_H
 
 #include <QDialog>
-
 namespace Ui {
 class LoginPage;
 }
@@ -21,7 +20,7 @@ private slots:
     void on_goToRegistationButton_clicked(); // Slot for handling goToRegistationButton clicks.
 
 private:
-    Ui::LoginPage *ui; // Pointer to the auto-generated UI class from login.ui.
+    Ui::LoginPage *ui; // Pointer to the auto-generated UI class from loginpage.ui.
 };
 
 #endif 
