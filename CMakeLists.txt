@@ -14,8 +14,11 @@ find_package(unofficial-sodium CONFIG REQUIRED)
 
 
 add_executable(MyQtApp
-#        main.cpp
-        X3DH.cpp
+        main.cpp
+        FrontEnd/LoginPage/loginpage.cpp
+        FrontEnd/LoginPage/loginpage.ui
+        FrontEnd/HomePage/home.cpp
+        FrontEnd/HomePage/home.ui
 )
 
 target_link_libraries(MyQtApp
