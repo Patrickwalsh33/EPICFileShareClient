@@ -19,6 +19,8 @@ add_executable(MyQtApp
         FrontEnd/LoginPage/loginpage.ui
         FrontEnd/HomePage/home.cpp
         FrontEnd/HomePage/home.ui
+        X3DH/X3DH.h
+        X3DH/X3DH.cpp
 )
 
 target_link_libraries(MyQtApp
