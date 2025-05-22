@@ -101,4 +101,18 @@ void run_x3dh_demo() {
     } else {
         std::cerr << "[Error] Shared secrets do not match!" << std::endl;
     }
+
+    unsigned char file_key[crypto_aead_chacha20poly1305_IETF_KEYBYTES];
+    if (crypto_kdf_derive_from_key(
+            file_key,
+            sizeof(file_key),  // size of the output key
+            1,                 // subkey ID (can be any 64-bit number)
+            "filekey0",         // context string (exactly 8 bytes)
+            alice_shared       // shared secret from X3DH
+    ) != 0) {
+        std::cerr << "[Error] Failed to derive symmetric key." << std::endl;
+        return;
+    }
+
+    print_hex("[Derived] File Encryption Key: ", file_key, sizeof(file_key));
 }
