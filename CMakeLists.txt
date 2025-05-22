@@ -9,8 +9,9 @@ set(CMAKE_AUTOUIC ON)
 # Qt setup
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
-# Add this line to find libsodium (via vcpkg)
-find_package(unofficial-sodium CONFIG REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium)
+
 
 
 add_executable(MyQtApp
@@ -25,10 +26,17 @@ add_executable(MyQtApp
         FrontEnd/RegisterPage/registerpage.ui
 )
 
+target_include_directories(MyQtApp PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/Password
+        PkgConfig::LIBSODIUM
+)
+
 target_link_libraries(MyQtApp
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets
-        unofficial-sodium::sodium
+        PkgConfig::LIBSODIUM
 )
+
+
 
