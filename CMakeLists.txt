@@ -6,8 +6,12 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Do NOT hardcode paths – rely on Qt6_DIR set via environment or CLion config
+# Qt setup
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+
+# Add this line to find libsodium (via vcpkg)
+find_package(unofficial-sodium CONFIG REQUIRED)
+
 
 add_executable(MyQtApp
         main.cpp
@@ -15,6 +19,8 @@ add_executable(MyQtApp
         FrontEnd/LoginPage/loginpage.ui
         FrontEnd/HomePage/home.cpp
         FrontEnd/HomePage/home.ui
+        X3DH/X3DH.h
+        X3DH/X3DH.cpp
         FrontEnd/RegisterPage/registerpage.cpp
         FrontEnd/RegisterPage/registerpage.ui
 )
@@ -23,4 +29,6 @@ target_link_libraries(MyQtApp
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets
+        unofficial-sodium::sodium
 )
+
