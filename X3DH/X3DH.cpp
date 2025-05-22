@@ -12,10 +12,17 @@ void print_hex(const char* label, const unsigned char* data, size_t len) {
 
 void run_x3dh_demo() {
     if (sodium_init() < 0) {
+// std::cerr is the error output stream, different from std::cout
+// it still lets you print to the console, but it's used for error messages
+// so hypothetically we could redirect all output in std::cerr to a file,
+// and all output in std::cout to the console, so we could clearly see which is which
+
         std::cerr << "Failed to initialize libsodium." << std::endl;
         return;
     }
 
+// first 2 lines here are creating arrays of unsigned chars that the result of the
+// crypto_box_keypair function will be stored in
     unsigned char alice_eph_pk[crypto_box_PUBLICKEYBYTES];
     unsigned char alice_eph_sk[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(alice_eph_pk, alice_eph_sk);
