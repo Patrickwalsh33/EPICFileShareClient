@@ -47,15 +47,25 @@ void run_x3dh_demo() {
     unsigned char dh2[crypto_scalarmult_BYTES];
     unsigned char dh3[crypto_scalarmult_BYTES];
 
+
+    //crypto_scalarmult is a function that computes a Diffie-Hellman shared secret
+    //it multiplies the scalar * point (algo = Curve25519)
+    //the first argument is the result, the second is the scalar, and the third is the point
+    //if any of the functions fail, it will return a non-zero value
+    //first one if for authentication
     if (crypto_scalarmult(dh1, alice_eph_sk, bob_id_pk) != 0 ||
+        //second one is for forward secrecy and resistance to replay attacks
         crypto_scalarmult(dh2, alice_eph_sk, bob_spk_pk) != 0 ||
+        //adds secrecy against compromise of long term id keys
         crypto_scalarmult(dh3, alice_eph_sk, bob_opk_pk) != 0) {
         std::cerr << "[Alice] Failed to compute DH values." << std::endl;
         return;
     }
 
     unsigned char alice_shared[crypto_generichash_BYTES];
+    //structure that holds the state of the BLAKE2b hash function
     crypto_generichash_state state;
+    //initialise the state
     crypto_generichash_init(&state, NULL, 0, sizeof(alice_shared));
     crypto_generichash_update(&state, dh1, sizeof(dh1));
     crypto_generichash_update(&state, dh2, sizeof(dh2));
@@ -84,6 +94,8 @@ void run_x3dh_demo() {
     crypto_generichash_final(&state, bob_shared, sizeof(bob_shared));
     print_hex("[Bob] Combined Shared Secret: ", bob_shared, sizeof(bob_shared));
 
+
+    //should switch to crypto_verify_32
     if (memcmp(alice_shared, bob_shared, sizeof(alice_shared)) == 0) {
         std::cout << "[Success] Shared secrets match!" << std::endl;
     } else {
