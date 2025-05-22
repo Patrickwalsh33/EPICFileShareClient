@@ -10,6 +10,50 @@ void print_hex(const char* label, const unsigned char* data, size_t len) {
     std::cout << std::endl;
 }
 
+//chacha20 encrypt
+void encrypt_with_chacha20(const unsigned char* plaintext, unsigned long long plaintext_len,
+                           const unsigned char key[crypto_aead_chacha20poly1305_ietf_KEYBYTES],
+                           unsigned char* ciphertext, unsigned long long* ciphertext_len,
+                           unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES]) {
+    // Generate random nonce
+    randombytes_buf(nonce, crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
+
+    // No additional data (can be used for authenticated headers, etc.)
+    const unsigned char* ad = NULL;
+    unsigned long long ad_len = 0;
+
+    crypto_aead_chacha20poly1305_ietf_encrypt(
+            ciphertext, ciphertext_len,
+            plaintext, plaintext_len,
+            ad, ad_len,
+            NULL, // no secret nonce
+            nonce,
+            key
+    );
+}
+
+//chacha20 decrypt
+bool decrypt_with_chacha20(const unsigned char* ciphertext, unsigned long long ciphertext_len,
+                           const unsigned char key[crypto_aead_chacha20poly1305_ietf_KEYBYTES],
+                           const unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES],
+                           unsigned char* decrypted, unsigned long long* decrypted_len) {
+    const unsigned char* ad = NULL;
+    unsigned long long ad_len = 0;
+
+    if (crypto_aead_chacha20poly1305_ietf_decrypt(
+            decrypted, decrypted_len,
+            NULL, // no mac check failure output
+            ciphertext, ciphertext_len,
+            ad, ad_len,
+            nonce,
+            key) != 0) {
+        std::cerr << "[Error] Decryption failed. Authentication tag mismatch." << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void run_x3dh_demo() {
     if (sodium_init() < 0) {
 // std::cerr is the error output stream, different from std::cout
@@ -102,6 +146,8 @@ void run_x3dh_demo() {
         std::cerr << "[Error] Shared secrets do not match!" << std::endl;
     }
 
+
+    // Derive the file encryption key from the shared secret
     unsigned char file_key[crypto_aead_chacha20poly1305_IETF_KEYBYTES];
     if (crypto_kdf_derive_from_key(
             file_key,
@@ -115,4 +161,26 @@ void run_x3dh_demo() {
     }
 
     print_hex("[Derived] File Encryption Key: ", file_key, sizeof(file_key));
+
+    const char* message = "secret file contents";
+    unsigned long long message_len = strlen(message);
+
+    unsigned char ciphertext[1024];
+    unsigned long long ciphertext_len;
+
+    unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES];
+
+// Encrypt
+    encrypt_with_chacha20((const unsigned char*)message, message_len, file_key,
+                          ciphertext, &ciphertext_len, nonce);
+
+// Decrypt
+    unsigned char decrypted[1024];
+    unsigned long long decrypted_len;
+
+    if (decrypt_with_chacha20(ciphertext, ciphertext_len, file_key, nonce,
+                              decrypted, &decrypted_len)) {
+        decrypted[decrypted_len] = '\0'; // null-terminate for printing
+        std::cout << "Decrypted: " << decrypted << std::endl;
+    }
 }
