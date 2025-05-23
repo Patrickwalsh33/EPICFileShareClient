@@ -20,6 +20,12 @@ add_executable(MyQtApp
         FrontEnd/HomePage/home.ui
         FrontEnd/RegisterPage/registerpage.cpp
         FrontEnd/RegisterPage/registerpage.ui
+        auth/PasswordValidator.cpp
+        auth/PasswordValidator.h
+        auth/CommonPasswordChecker.cpp
+        auth/CommonPasswordChecker.h
+        auth/UserAuthentication.cpp
+        auth/UserAuthentication.h
 )
 
 target_link_libraries(MyQtApp

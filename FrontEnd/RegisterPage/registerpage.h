@@ -1,12 +1,10 @@
 #ifndef REGISTERPAGE_H
 #define REGISTERPAGE_H
 
-
 #include <QDialog>
-#include <QStringList>
-#include <QFile>
-#include <QTextStream>
-
+#include "../../auth/UserAuthentication.h"
+#include "../../auth/PasswordValidator.h"
+#include "../../auth/CommonPasswordChecker.h"
 
 namespace Ui {
 class RegisterPage;
@@ -27,19 +25,13 @@ private slots:
 
 private:
     Ui::RegisterPage *ui; // Pointer to the auto-generated UI class
-
-    //Nist SP800-63B password validation
-
-    bool validatePassword(const QString& password, const QString& confirmPassword, QString& errorMsg);
-    bool validateUsername(const QString& username, QString& errorMsg); //function can change error message but cant change username
-
-
-    //methods for loading common passwords there in a csv file for now
-    QStringList loadCommonPasswordsFromCSV();
-    QStringList commonPasswords; 
+    
+    // Auth components
+    CommonPasswordChecker* passwordChecker;
+    PasswordValidator* passwordValidator;
+    UserAuthentication* userAuth;
 
     int failed;
-
 };
 
 #endif 
