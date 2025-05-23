@@ -30,6 +30,8 @@ add_executable(MyQtApp
         X3DH/X3DH.cpp
         FrontEnd/RegisterPage/registerpage.cpp
         FrontEnd/RegisterPage/registerpage.ui
+        crypto/crypto_utils.cpp
+        crypto/crypto_utils.h
         auth/PasswordValidator.cpp
         auth/PasswordValidator.h
         auth/CommonPasswordChecker.cpp
