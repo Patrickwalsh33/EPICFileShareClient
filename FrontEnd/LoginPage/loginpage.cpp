@@ -35,4 +35,4 @@ void LoginPage::on_loginButton_clicked(){
 void LoginPage::on_goToRegistationButton_clicked()
 {
     qDebug() << "goToRegistationButton_clicked";
-} 
+}
