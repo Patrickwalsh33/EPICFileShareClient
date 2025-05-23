@@ -10,7 +10,7 @@ CommonPasswordChecker::CommonPasswordChecker() {
 
 //loads common passwords from a CSV file
 QStringList CommonPasswordChecker::loadCommonPasswordsFromCSV(){ 
-    QStringList paswords;       //list to store passwords
+    QStringList passwords;       //list to store passwords
     QFile file("common_passwords.csv");         //opens csv file
     
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -26,7 +26,7 @@ QStringList CommonPasswordChecker::loadCommonPasswordsFromCSV(){
             QString line = in.readLine();
             QStringList fields = line.split(',');
             if (!fields.isEmpty()) {
-                paswords << fields[0].trimmed();
+                passwords << fields[0].trimmed();
             }
         }
 
@@ -35,7 +35,7 @@ QStringList CommonPasswordChecker::loadCommonPasswordsFromCSV(){
         qDebug() << "failed to open the common passwords file";
     }
 
-    return paswords;
+    return passwords;
 }
 
 bool CommonPasswordChecker::isCommonPassword(const QString& password) {
