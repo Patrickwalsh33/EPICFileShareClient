@@ -1,6 +1,7 @@
 #include "loginpage.h"
 #include "ui_loginpage.h"
 #include <QDebug>
+#include "../UploadPage/uploadpage.h"
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
 LoginPage::LoginPage(QWidget *parent) :
@@ -20,6 +21,14 @@ LoginPage::~LoginPage()
 void LoginPage::on_loginButton_clicked(){
 
     qDebug() << "loginButton_clicked";
+    qDebug() << "navigating to UploadPage";
+
+    UploadPage registerDialog(nullptr);
+    registerDialog.setAttribute(Qt::WA_DeleteOnClose);
+
+    this->accept(); // Close HomePage
+
+    registerDialog.exec(); // Show Upload page modally
 }
 
 // Slot for handling the goToRegistationButton's clicked signal.
