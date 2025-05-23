@@ -1,4 +1,4 @@
-#include "x3dh.h"
+#include "X3DH.h"
 #include "../crypto/crypto_utils.h"
 #include <sodium.h>
 #include <iostream>

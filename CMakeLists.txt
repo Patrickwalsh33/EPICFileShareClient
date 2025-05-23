@@ -6,6 +6,12 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+
+# Copy the password file to the build directory
+configure_file(common_passwords.csv ${CMAKE_BINARY_DIR}/common_passwords.csv COPYONLY)
+
+
+
 # Qt setup
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
@@ -26,6 +32,12 @@ add_executable(MyQtApp
         FrontEnd/RegisterPage/registerpage.ui
         crypto/crypto_utils.cpp
         crypto/crypto_utils.h
+        auth/PasswordValidator.cpp
+        auth/PasswordValidator.h
+        auth/CommonPasswordChecker.cpp
+        auth/CommonPasswordChecker.h
+        auth/UserAuthentication.cpp
+        auth/UserAuthentication.h
 )
 
 target_include_directories(MyQtApp PRIVATE
