@@ -1,9 +1,12 @@
 #include "UserAuthentication.h"
 #include <QDebug>
+#include <sodium/crypto_aead_chacha20poly1305.h>
 
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
-    : validator(validator), masterKeyDerivation(new MasterKeyDerivation()) {
+    : validator(validator),
+masterKeyDerivation(new MasterKeyDerivation()),
+kekManager(new KEKManager()) {
 }
 
 bool UserAuthentication::registerUser(const QString& username, const QString& password, const QString& confirmPassword, QString& errorMsg) {
@@ -21,11 +24,18 @@ bool UserAuthentication::registerUser(const QString& username, const QString& pa
     try
     {
         std::string MasterKey = deriveMasterKeyFromPassword(password);
+        std::vector<unsigned char> masterKeytest(MasterKey.begin(), MasterKey.end());
+        qDebug() << "MasterKey string length:" << masterKeytest.size();
+        qDebug() << "masterKey vector size:" << masterKeytest.size();
+        qDebug() << "Expected size:" << crypto_aead_chacha20poly1305_ietf_KEYBYTES;
 
 
 
-        auto kek = encryptionKeyGenerator.generateKey();
-        auto encryptedKEK =kekManager->encryptKEK(MasterKey, kek);
+        auto kek = EncryptionKeyGenerator::generateKey(32);
+        std::vector<unsigned char> masterKey(MasterKey.begin(), MasterKey.end());
+        std::vector<unsigned char> nonce;
+
+        auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
 
         qDebug() << "MasterKey Derived Successfully:" << MasterKey;
         qDebug() << "User registration successful for:" << username;
@@ -63,4 +73,5 @@ bool UserAuthentication::loginUser(const QString& username, const QString& passw
 UserAuthentication::~UserAuthentication()
 {
     delete masterKeyDerivation;
+    delete kekManager;
 }

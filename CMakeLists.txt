@@ -44,6 +44,8 @@ add_executable(MyQtApp
         key_management/FileKeyManager.h
         key_management/UserKeyGenerator.cpp
         key_management/UserKeyGenerator.h
+        key_management/KEKManager.cpp
+        key_management/KEKManager.h
 )
 
 target_include_directories(MyQtApp PRIVATE
