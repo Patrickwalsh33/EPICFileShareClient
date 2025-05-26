@@ -13,7 +13,7 @@ public:
     ~UserAuthentication();
     
     // Register a new user
-    bool registerUser(const QString& username, const QString& password, const QString& confirmPassword, QString& errorMsg);
+    bool registerUser(const QString& username, const QString&  qpassword, const QString& confirmPassword, QString& errorMsg);
     
     // Login a user
     bool loginUser(const QString& username, const QString& password, QString& errorMsg);
@@ -24,7 +24,7 @@ private:
     EncryptionKeyGenerator* encryptionKeyGenerator;
     KEKManager* kekManager;
 
-    std::string deriveMasterKeyFromPassword(const QString& password);
+    std::string deriveMasterKeyFromPassword(const QString& password, const std::vector<unsigned char>& salt);
     // TODO: Add database connection or storage mechanism
 };
 
