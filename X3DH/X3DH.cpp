@@ -3,6 +3,7 @@
 #include <sodium.h>
 #include <iostream>
 #include <cstring>
+#include "../key_management/X3DHKeys/IdentityKeyPair.h"
 
 void run_x3dh_demo() {
     if (sodium_init() < 0) {

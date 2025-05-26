@@ -6,17 +6,17 @@ const size_t Encryption_KEY_SIZE = 32;
 
 
 
-class EncryptionKeyGenerator
-{
+class EncryptionKeyGenerator {
 public:
     static std::vector<unsigned char> generateKey(size_t key_bytes);
 
-
-private:
-
+    //following 3 lines prevent instantiation,copying and assignment of this class
     EncryptionKeyGenerator() = delete;
-    EncryptionKeyGenerator(const EncryptionKeyGenerator&) = delete;
-    EncryptionKeyGenerator& operator=(const EncryptionKeyGenerator&) = delete;
+
+    EncryptionKeyGenerator(const EncryptionKeyGenerator &) = delete;
+
+    EncryptionKeyGenerator &operator=(const EncryptionKeyGenerator &) = delete;
+
 };
 
 #endif //ENCRYPTIONKEYGENERATOR_H
