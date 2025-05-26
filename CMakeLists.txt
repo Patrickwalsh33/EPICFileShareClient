@@ -41,6 +41,8 @@ add_executable(MyQtApp
         auth/CommonPasswordChecker.h
         auth/UserAuthentication.cpp
         auth/UserAuthentication.h
+        FrontEnd/UploadPage/uploadManager.cpp
+        FrontEnd/UploadPage/uploadManager.h
 )
 
 target_include_directories(MyQtApp PRIVATE
