@@ -3,6 +3,8 @@
 #include <QDebug>            //for debug output
 #include <QMessageBox>        //for displaying messages
 #include "../LoginPage/loginpage.h"   //include the login page for redirection
+#include "../../auth/validation.h"
+#include "../../auth/CommonPasswordChecker.h"
 
 // Constructor
 RegisterPage::RegisterPage(QWidget *parent) :

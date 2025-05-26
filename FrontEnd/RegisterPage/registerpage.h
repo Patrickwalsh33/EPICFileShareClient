@@ -3,7 +3,7 @@
 
 #include <QDialog>
 #include "../../auth/UserAuthentication.h"
-#include "../../auth/PasswordValidator.h"
+#include "../../auth/validation.h"
 #include "../../auth/CommonPasswordChecker.h"
 
 namespace Ui {
