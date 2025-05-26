@@ -1,5 +1,4 @@
 #pragma once
+#include <cstddef>
 
-void run_x3dh_demo();
-
-
+bool run_x3dh(unsigned char* outSharedSecret, size_t outLen);
