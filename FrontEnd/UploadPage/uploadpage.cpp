@@ -24,6 +24,7 @@ UploadPage::UploadPage(QWidget *parent) :
     ui->selectedFileLabel->setText("No file selected");
     ui->fileSizeLabel->setText("");
     ui->fileTypeLabel->setText("");
+    uploader->setServerUrl("https://leftovers.gobbler.info:3333");
 
     connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
         QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
