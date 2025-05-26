@@ -5,6 +5,7 @@
 #ifndef UPLOADPAGE_H
 #define UPLOADPAGE_H
 
+#include "uploadManager.h"
 #include <QDialog>
 #include <QString>
 
@@ -30,6 +31,7 @@ private:
     Ui::UploadPage *ui; // Pointer to the auto-generated UI class from uploadpage.ui.
     QString selectedFilePath; // Stores the path of the selected file.
     void updateFileInfo(); // Updates the file information display.
+    uploadManager *uploader; // Pointer to the upload manager for handling file uploads.
 };
 
 #endif // UPLOADPAGE_H

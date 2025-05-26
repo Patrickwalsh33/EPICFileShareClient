@@ -15,19 +15,23 @@
 // Constructor: Initializes the UploadPage dialog and sets up the UI.
 UploadPage::UploadPage(QWidget *parent) :
         QDialog(parent),
-        ui(new Ui::UploadPage)
-{
+        ui(new Ui::UploadPage),
+        uploader(new uploadManager(this)) {
     ui->setupUi(this);
 
     // Initially disable the upload button until a file is selected
     ui->uploadButton->setEnabled(false);
-
-    // Clear the file info labels initially
     ui->selectedFileLabel->setText("No file selected");
     ui->fileSizeLabel->setText("");
     ui->fileTypeLabel->setText("");
-}
 
+    connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
+        QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
+    });
+    connect(uploader, &uploadManager::uploadFailed, this, [=](const QString &error) {
+        QMessageBox::critical(this, "Upload Failed", "Error uploading file: " + error);
+    });
+}
 // Destructor: Deletes the UI object to free resources.
 UploadPage::~UploadPage()
 {
@@ -54,14 +58,13 @@ void UploadPage::on_selectFileButton_clicked()
 }
 
 // Slot for handling the uploadButton's clicked signal
-void UploadPage::on_uploadButton_clicked()
-{
+void UploadPage::on_uploadButton_clicked() {
+    qDebug() << "Upload button clicked for file:" << selectedFilePath;
     if (selectedFilePath.isEmpty()) {
         QMessageBox::warning(this, "Upload Error", "Please select a file first.");
         return;
     }
 
-    // For now, just show a message that the upload functionality will be implemented later
     QFileInfo fileInfo(selectedFilePath);
     QString message = QString("Upload functionality will be implemented later.\n\n"
                               "Selected file: %1\n"
@@ -71,11 +74,8 @@ void UploadPage::on_uploadButton_clicked()
             .arg(fileInfo.size())
             .arg(fileInfo.suffix().isEmpty() ? "Unknown" : fileInfo.suffix().toUpper());
 
-    QMessageBox::information(this, "Upload Ready", message);
-
-    // TODO: Implement actual file upload functionality
-    // This is where you would add the code to send the file to a server
-    qDebug() << "Upload button clicked for file:" << selectedFilePath;
+    qDebug() << "Attempting to upload file:" << selectedFilePath;
+    uploader->uploadFile(selectedFilePath);
 }
 
 // Slot for handling the backButton's clicked signal
