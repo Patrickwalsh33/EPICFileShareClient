@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <sodium/crypto_aead_chacha20poly1305.h>
 #include <sodium.h>
+#include <vector>
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
     : validator(validator),
@@ -9,26 +10,27 @@ masterKeyDerivation(new MasterKeyDerivation()),
 kekManager(new KEKManager()) {
 }
 
-bool UserAuthentication::registerUser(const QString& username, const QString& password, const QString& confirmPassword, QString& errorMsg) {
+bool UserAuthentication::registerUser(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
     // Validate username
     if (!validator->validateUsername(username, errorMsg)) {
         return false;
     }
     
     // Validate password
-    if (!validator->validatePassword(password, confirmPassword, errorMsg)) {
+    if (!validator->validatePassword(qpassword, confirmPassword, errorMsg)) {
         return false;
     }
 
+    std::string password = qpassword.toStdString();
 
     try
     {
-        std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES);
+        std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES); // 16 byte salt
         randombytes_buf(salt.data(), salt.size());
 
-        std::vector<unsigned char> masterKey = deriveMasterKeyFromPassword(password, salt);
+        std::vector<unsigned char> masterKey = masterKeyDerivation->deriveMaster(password, salt); //Uses Argon2id
 
-        auto kek = EncryptionKeyGenerator::generateKey(32);
+        auto kek = EncryptionKeyGenerator::generateKey(32); //Generates the KEK
 
         qDebug() << "kek:" << kek;
         std::vector<unsigned char> nonce;
@@ -49,21 +51,13 @@ bool UserAuthentication::registerUser(const QString& username, const QString& pa
 }
 
 
-std::string UserAuthentication::deriveMasterKeyFromPassword(const QString& password)
-{
-    std::string passwordStr = password.toStdString();
 
-    return masterKeyDerivation->deriveMaster(passwordStr);
-}
 bool UserAuthentication::loginUser(const QString& username, const QString& password, QString& errorMsg) {
    
 
-    try
-    {
 
-    }
     // For now, return success if username and password are not empty
-    if (username.isEmpty() || password.isEmpty()) {
+    if(username.isEmpty() || password.isEmpty()) {
         errorMsg = "Username and password cannot be empty";
         return false;
     }

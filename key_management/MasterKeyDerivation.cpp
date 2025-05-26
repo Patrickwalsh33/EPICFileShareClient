@@ -1,6 +1,8 @@
 #include "MasterKeyDerivation.h"
 #include <sodium/core.h>
 #include <sodium/crypto_pwhash.h>
+#include <sodium.h>
+#include <stdexcept>
 
 MasterKeyDerivation::MasterKeyDerivation() {
     if (sodium_init() < 0) {
@@ -14,7 +16,7 @@ MasterKeyDerivation::~MasterKeyDerivation() = default;
 
 std::vector<unsigned char> MasterKeyDerivation::deriveMaster(
     const std::string& password,
-    const std::string& salt
+    const std::vector<unsigned char>& salt
     ) {
 
     std::vector<unsigned char> masterKey(crypto_aead_chacha20poly1305_ietf_KEYBYTES);
@@ -27,7 +29,7 @@ std::vector<unsigned char> MasterKeyDerivation::deriveMaster(
         salt.data(),
         crypto_pwhash_OPSLIMIT_MODERATE,
         crypto_pwhash_MEMLIMIT_MODERATE,
-        crypto_pwhash_alg_argon2id13) != 0) {
+        crypto_pwhash_ALG_ARGON2ID13) != 0) {
         throw std::runtime_error("Master Derivation failed");
             }
 
