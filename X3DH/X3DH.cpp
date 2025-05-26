@@ -25,7 +25,19 @@ void run_x3dh_demo() {
     SignedPreKeyPair receiverSignedPre(receiverIdentity.getPrivateKey());
     OneTimeKeyPair receiverOneTime;
 
-    print_hex("[Receiver] Identity Public Key: ", receiverIdentity.getPublicKey().data(), receiverIdentity.getPublicKey().size());
+    unsigned char receiverCurveIdPriv[crypto_scalarmult_SCALARBYTES];
+    unsigned char receiverCurveIdPub[crypto_scalarmult_BYTES];
+
+    if (crypto_sign_ed25519_sk_to_curve25519(receiverCurveIdPriv, receiverIdentity.getPrivateKey().data()) != 0) {
+        throw std::runtime_error("Failed to convert Ed25519 private key to Curve25519");
+    }
+
+    if (crypto_sign_ed25519_pk_to_curve25519(receiverCurveIdPub, receiverIdentity.getPublicKey().data()) != 0) {
+        throw std::runtime_error("Failed to convert Ed25519 public key to Curve25519");
+    }
+
+
+    print_hex("[Receiver] Identity Public Key: ", receiverCurveIdPub, sizeof(receiverCurveIdPub));
     print_hex("[Receiver] Signed PreKey Public Key: ", receiverSignedPre.getPublicKey().data(), receiverSignedPre.getPublicKey().size());
     print_hex("[Receiver] One-Time PreKey Public Key: ", receiverOneTime.getPublicKey().data(), receiverOneTime.getPublicKey().size());
     print_hex("[Receiver] Signature on Signed PreKey: ", receiverSignedPre.getSignature().data(), receiverSignedPre.getSignature().size());
@@ -35,7 +47,7 @@ void run_x3dh_demo() {
             receiverSignedPre.getSignature().data(),
             receiverSignedPre.getPublicKey().data(),
             receiverSignedPre.getPublicKey().size(),
-            receiverIdentity.getPublicKey().data()) != 0) {
+            receiverCurveIdPub) != 0) {
         std::cerr << "[Sender] Signature verification on receiver's signed prekey FAILED!" << std::endl;
         return;
     }
@@ -46,7 +58,7 @@ void run_x3dh_demo() {
     unsigned char dh2[crypto_scalarmult_BYTES];
     unsigned char dh3[crypto_scalarmult_BYTES];
 
-    if (crypto_scalarmult(dh1, senderEphemeral.getPrivateKey().data(), receiverIdentity.getPublicKey().data()) != 0 ||
+    if (crypto_scalarmult(dh1, senderEphemeral.getPrivateKey().data(), receiverCurveIdPub) != 0 ||
         crypto_scalarmult(dh2, senderEphemeral.getPrivateKey().data(), receiverSignedPre.getPublicKey().data()) != 0 ||
         crypto_scalarmult(dh3, senderEphemeral.getPrivateKey().data(), receiverOneTime.getPublicKey().data()) != 0) {
         std::cerr << "[Sender] Failed to compute DH values." << std::endl;
@@ -67,7 +79,7 @@ void run_x3dh_demo() {
     unsigned char dh2_recv[crypto_scalarmult_BYTES];
     unsigned char dh3_recv[crypto_scalarmult_BYTES];
 
-    if (crypto_scalarmult(dh1_recv, receiverIdentity.getPrivateKey().data(), senderEphemeral.getPublicKey().data()) != 0 ||
+    if (crypto_scalarmult(dh1_recv, receiverCurveIdPriv, senderEphemeral.getPublicKey().data()) != 0 ||
         crypto_scalarmult(dh2_recv, receiverSignedPre.getPrivateKey().data(), senderEphemeral.getPublicKey().data()) != 0 ||
         crypto_scalarmult(dh3_recv, receiverOneTime.getPrivateKey().data(), senderEphemeral.getPublicKey().data()) != 0) {
         std::cerr << "[Receiver] Failed to compute DH values." << std::endl;
