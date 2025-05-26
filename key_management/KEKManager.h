@@ -1,7 +1,3 @@
-//
-// Created by Tóla Bowen Maccurtain on 24/05/2025.
-//
-
 #ifndef KEKMANAGER_H
 #define KEKMANAGER_H
 #include <vector>

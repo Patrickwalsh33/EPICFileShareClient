@@ -1,10 +1,7 @@
-//
-// Created by Tóla Bowen Maccurtain on 24/05/2025.
-//
-
 #include "KEKManager.h"
 #include "EncryptionKeyGenerator.h"
 #include <sodium.h>
+#include "stdexcept"
 
 
 

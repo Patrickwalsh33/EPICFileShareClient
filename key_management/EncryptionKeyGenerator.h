@@ -1,7 +1,3 @@
-//
-// Created by Tóla Bowen Maccurtain on 22/05/2025.
-//
-
 #ifndef ENCRYPTIONKEYGENERATOR_H
 #define ENCRYPTIONKEYGENERATOR_H
 #include <vector>

@@ -1,11 +1,7 @@
-//
-// Created by Tóla Bowen Maccurtain on 22/05/2025.
-//
-
 #include "MasterKeyDerivation.h"
-
 #include <sodium/core.h>
 #include <sodium/crypto_pwhash.h>
+#include <stdexcept>
 
 MasterKeyDerivation::MasterKeyDerivation() {
     if (sodium_init() < 0) {
