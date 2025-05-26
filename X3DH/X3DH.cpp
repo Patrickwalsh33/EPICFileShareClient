@@ -3,7 +3,12 @@
 #include <sodium.h>
 #include <iostream>
 #include <cstring>
+
+// Key classes
 #include "../key_management/X3DHKeys/IdentityKeyPair.h"
+#include "../key_management/X3DHKeys/EphemeralKeyPair.h"
+#include "../key_management/X3DHKeys/SignedPreKeyPair.h"
+#include "../key_management/X3DHKeys/OneTimeKeyPair.h"
 
 void run_x3dh_demo() {
     if (sodium_init() < 0) {
@@ -11,113 +16,119 @@ void run_x3dh_demo() {
         return;
     }
 
-    unsigned char alice_eph_pk[crypto_box_PUBLICKEYBYTES];
-    unsigned char alice_eph_sk[crypto_box_SECRETKEYBYTES];
-    crypto_box_keypair(alice_eph_pk, alice_eph_sk);
-    print_hex("[Alice] Ephemeral Public Key: ", alice_eph_pk, sizeof(alice_eph_pk));
+    // === Sender ===
+    EphemeralKeyPair senderEphemeral;
+    print_hex("[Sender] Ephemeral Public Key: ", senderEphemeral.getPublicKey().data(), senderEphemeral.getPublicKey().size());
 
-    unsigned char bob_id_pk[crypto_box_PUBLICKEYBYTES];
-    unsigned char bob_id_sk[crypto_box_SECRETKEYBYTES];
-    crypto_box_keypair(bob_id_pk, bob_id_sk);
-    print_hex("[Bob] Identity Public Key: ", bob_id_pk, sizeof(bob_id_pk));
+    // === Receiver ===
+    IdentityKeyPair receiverIdentity;
+    SignedPreKeyPair receiverSignedPre(receiverIdentity.getPrivateKey());
+    OneTimeKeyPair receiverOneTime;
 
-    unsigned char bob_spk_pk[crypto_box_PUBLICKEYBYTES];
-    unsigned char bob_spk_sk[crypto_box_SECRETKEYBYTES];
-    crypto_box_keypair(bob_spk_pk, bob_spk_sk);
-    print_hex("[Bob] Signed Prekey Public Key: ", bob_spk_pk, sizeof(bob_spk_pk));
+    print_hex("[Receiver] Identity Public Key: ", receiverIdentity.getPublicKey().data(), receiverIdentity.getPublicKey().size());
+    print_hex("[Receiver] Signed PreKey Public Key: ", receiverSignedPre.getPublicKey().data(), receiverSignedPre.getPublicKey().size());
+    print_hex("[Receiver] One-Time PreKey Public Key: ", receiverOneTime.getPublicKey().data(), receiverOneTime.getPublicKey().size());
+    print_hex("[Receiver] Signature on Signed PreKey: ", receiverSignedPre.getSignature().data(), receiverSignedPre.getSignature().size());
 
-    unsigned char bob_opk_pk[crypto_box_PUBLICKEYBYTES];
-    unsigned char bob_opk_sk[crypto_box_SECRETKEYBYTES];
-    crypto_box_keypair(bob_opk_pk, bob_opk_sk);
-    print_hex("[Bob] One-time Prekey Public Key: ", bob_opk_pk, sizeof(bob_opk_pk));
+    // === Sender verifies receiver’s signed prekey ===
+    if (crypto_sign_verify_detached(
+            receiverSignedPre.getSignature().data(),
+            receiverSignedPre.getPublicKey().data(),
+            receiverSignedPre.getPublicKey().size(),
+            receiverIdentity.getPublicKey().data()) != 0) {
+        std::cerr << "[Sender] Signature verification on receiver's signed prekey FAILED!" << std::endl;
+        return;
+    }
+    std::cout << "[Sender] Signature on receiver's signed prekey verified successfully." << std::endl;
 
+    // === Sender computes shared secrets ===
     unsigned char dh1[crypto_scalarmult_BYTES];
     unsigned char dh2[crypto_scalarmult_BYTES];
     unsigned char dh3[crypto_scalarmult_BYTES];
 
-    if (crypto_scalarmult(dh1, alice_eph_sk, bob_id_pk) != 0 ||
-        crypto_scalarmult(dh2, alice_eph_sk, bob_spk_pk) != 0 ||
-        crypto_scalarmult(dh3, alice_eph_sk, bob_opk_pk) != 0) {
-        std::cerr << "[Alice] Failed to compute DH values." << std::endl;
+    if (crypto_scalarmult(dh1, senderEphemeral.getPrivateKey().data(), receiverIdentity.getPublicKey().data()) != 0 ||
+        crypto_scalarmult(dh2, senderEphemeral.getPrivateKey().data(), receiverSignedPre.getPublicKey().data()) != 0 ||
+        crypto_scalarmult(dh3, senderEphemeral.getPrivateKey().data(), receiverOneTime.getPublicKey().data()) != 0) {
+        std::cerr << "[Sender] Failed to compute DH values." << std::endl;
         return;
     }
 
-    unsigned char alice_shared[crypto_generichash_BYTES];
-    crypto_generichash_state state;
-    crypto_generichash_init(&state, NULL, 0, sizeof(alice_shared));
-    crypto_generichash_update(&state, dh1, sizeof(dh1));
-    crypto_generichash_update(&state, dh2, sizeof(dh2));
-    crypto_generichash_update(&state, dh3, sizeof(dh3));
-    crypto_generichash_final(&state, alice_shared, sizeof(alice_shared));
-    print_hex("[Alice] Combined Shared Secret: ", alice_shared, sizeof(alice_shared));
+    unsigned char senderShared[crypto_generichash_BYTES];
+    crypto_generichash_state senderState;
+    crypto_generichash_init(&senderState, NULL, 0, sizeof(senderShared));
+    crypto_generichash_update(&senderState, dh1, sizeof(dh1));
+    crypto_generichash_update(&senderState, dh2, sizeof(dh2));
+    crypto_generichash_update(&senderState, dh3, sizeof(dh3));
+    crypto_generichash_final(&senderState, senderShared, sizeof(senderShared));
+    print_hex("[Sender] Combined Shared Secret: ", senderShared, sizeof(senderShared));
 
-    print_hex("[Bob] Received Alice's Ephemeral Public Key: ", alice_eph_pk, sizeof(alice_eph_pk));
+    // === Receiver computes shared secrets ===
+    unsigned char dh1_recv[crypto_scalarmult_BYTES];
+    unsigned char dh2_recv[crypto_scalarmult_BYTES];
+    unsigned char dh3_recv[crypto_scalarmult_BYTES];
 
-    unsigned char bob_dh1[crypto_scalarmult_BYTES];
-    unsigned char bob_dh2[crypto_scalarmult_BYTES];
-    unsigned char bob_dh3[crypto_scalarmult_BYTES];
-
-    if (crypto_scalarmult(bob_dh1, bob_id_sk, alice_eph_pk) != 0 ||
-        crypto_scalarmult(bob_dh2, bob_spk_sk, alice_eph_pk) != 0 ||
-        crypto_scalarmult(bob_dh3, bob_opk_sk, alice_eph_pk) != 0) {
-        std::cerr << "[Bob] Failed to compute DH values." << std::endl;
+    if (crypto_scalarmult(dh1_recv, receiverIdentity.getPrivateKey().data(), senderEphemeral.getPublicKey().data()) != 0 ||
+        crypto_scalarmult(dh2_recv, receiverSignedPre.getPrivateKey().data(), senderEphemeral.getPublicKey().data()) != 0 ||
+        crypto_scalarmult(dh3_recv, receiverOneTime.getPrivateKey().data(), senderEphemeral.getPublicKey().data()) != 0) {
+        std::cerr << "[Receiver] Failed to compute DH values." << std::endl;
         return;
     }
 
-    unsigned char bob_shared[crypto_generichash_BYTES];
-    crypto_generichash_init(&state, NULL, 0, sizeof(bob_shared));
-    crypto_generichash_update(&state, bob_dh1, sizeof(bob_dh1));
-    crypto_generichash_update(&state, bob_dh2, sizeof(bob_dh2));
-    crypto_generichash_update(&state, bob_dh3, sizeof(bob_dh3));
-    crypto_generichash_final(&state, bob_shared, sizeof(bob_shared));
-    print_hex("[Bob] Combined Shared Secret: ", bob_shared, sizeof(bob_shared));
+    unsigned char receiverShared[crypto_generichash_BYTES];
+    crypto_generichash_state receiverState;
+    crypto_generichash_init(&receiverState, NULL, 0, sizeof(receiverShared));
+    crypto_generichash_update(&receiverState, dh1_recv, sizeof(dh1_recv));
+    crypto_generichash_update(&receiverState, dh2_recv, sizeof(dh2_recv));
+    crypto_generichash_update(&receiverState, dh3_recv, sizeof(dh3_recv));
+    crypto_generichash_final(&receiverState, receiverShared, sizeof(receiverShared));
+    print_hex("[Receiver] Combined Shared Secret: ", receiverShared, sizeof(receiverShared));
 
-    if (memcmp(alice_shared, bob_shared, sizeof(alice_shared)) == 0) {
-        std::cout << "[Success] Shared secrets match!" << std::endl;
+    // === Compare shared secrets ===
+    if (memcmp(senderShared, receiverShared, sizeof(senderShared)) == 0) {
+        std::cout << "[SUCCESS] Shared secrets match." << std::endl;
     } else {
-        std::cerr << "[Error] Shared secrets do not match!" << std::endl;
+        std::cerr << "[ERROR] Shared secrets DO NOT match." << std::endl;
         return;
     }
 
-    // Derive file encryption key from shared secret
-    unsigned char file_key[crypto_aead_chacha20poly1305_ietf_KEYBYTES];
-    if (!derive_key_from_shared_secret(
-            alice_shared,
-            file_key,
-            "filekey0",
-            1)) {
-        std::cerr << "[Error] Failed to derive file encryption key." << std::endl;
+    // === Derive file encryption key from shared secret ===
+    unsigned char fileKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES];
+    if (!derive_key_from_shared_secret(senderShared, fileKey, "filekey0", 1)) {
+        std::cerr << "[ERROR] Failed to derive file key." << std::endl;
         return;
     }
-    print_hex("[Derived] File Encryption Key: ", file_key, sizeof(file_key));
+    print_hex("[Derived] File Encryption Key: ", fileKey, sizeof(fileKey));
 
-    // Encrypt a test message
+    // === Encrypt a test message ===
     const char* message = "secret file contents";
-    unsigned long long message_len = strlen(message);
+    unsigned long long messageLen = strlen(message);
 
     unsigned char ciphertext[1024];
-    unsigned long long ciphertext_len;
+    unsigned long long ciphertextLen;
 
     unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES];
 
     encrypt_with_chacha20(
-            (const unsigned char*)message, message_len,
-            file_key,
-            ciphertext, &ciphertext_len,
-            nonce);
+            reinterpret_cast<const unsigned char*>(message),
+            messageLen,
+            fileKey,
+            ciphertext,
+            &ciphertextLen,
+            nonce
+    );
 
-    // Decrypt the test message
+    // === Decrypt the message ===
     unsigned char decrypted[1024];
-    unsigned long long decrypted_len;
+    unsigned long long decryptedLen;
 
     if (decrypt_with_chacha20(
-            ciphertext, ciphertext_len,
-            file_key,
+            ciphertext, ciphertextLen,
+            fileKey,
             nonce,
-            decrypted, &decrypted_len)) {
-        decrypted[decrypted_len] = '\0'; // Null terminate
+            decrypted, &decryptedLen)) {
+        decrypted[decryptedLen] = '\0';
         std::cout << "Decrypted: " << decrypted << std::endl;
     } else {
-        std::cerr << "[Error] Decryption failed." << std::endl;
+        std::cerr << "[ERROR] Decryption failed." << std::endl;
     }
 }
