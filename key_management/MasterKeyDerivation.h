@@ -1,6 +1,8 @@
 #ifndef MASTERKEYDERIVATION_H
 #define MASTERKEYDERIVATION_H
 #include <string>
+#include <vector>
+#include <sodium.h>
 
 class MasterKeyDerivation {
 public:
