@@ -1,14 +1,11 @@
-//
-// Created by Andrew Jaffray on 26/05/2025.
-//
 
-#ifndef MYQTAPP_UPLOADMANAGER_H
-#define MYQTAPP_UPLOADMANAGER_H
 #pragma once
 
 #include <QObject>
 #include <QString>
-
+#include <QByteArray>
+#include <QSslError>
+#include <QNetworkReply>
 
 class uploadManager : public QObject
 {
@@ -18,13 +15,27 @@ public:
     explicit uploadManager(QObject *parent = nullptr);
     ~uploadManager();
 
-    bool uploadFile(const QString &filePath);
+    void setServerUrl(const QString &url);
+    bool uploadFile(const QByteArray &fileData, const QByteArray &dek); //the filepath might have to be changed to a QByteArray if we want to send the file contents directly
 
 signals:
-    void uploadSucceeded();
+    void uploadSucceeded(const QByteArray &dek);
     void uploadFailed(const QString &error);
+    void uploadProgress(qint64 bytesSent, qint64 bytesTotal);
+    void sslError(const QString &error);
 
+private slots:
+    void handleUploadProgress(qint64 bytesSent, qint64 bytesTotal);
+    void handleUploadFinished();
+    void handleSslErrors(const QList<QSslError> &errors);
+    void handleNetworkError(QNetworkReply::NetworkError error);
+
+private:
+    void setupSslConfiguration();
+
+    QString serverUrl;
+    QByteArray currentDek;
+    QNetworkReply *currentReply;
+    QNetworkAccessManager *networkManager;
 
 };
-
-#endif //MYQTAPP_UPLOADMANAGER_H

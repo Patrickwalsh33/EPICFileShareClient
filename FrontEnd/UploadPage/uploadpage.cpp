@@ -66,7 +66,7 @@ void UploadPage::on_uploadButton_clicked() {
     }
 
     QFileInfo fileInfo(selectedFilePath);
-    QString message = QString("Upload functionality will be implemented later.\n\n"
+    QString message = QString(
                               "Selected file: %1\n"
                               "File size: %2 bytes\n"
                               "File type: %3")
@@ -75,7 +75,9 @@ void UploadPage::on_uploadButton_clicked() {
             .arg(fileInfo.suffix().isEmpty() ? "Unknown" : fileInfo.suffix().toUpper());
 
     qDebug() << "Attempting to upload file:" << selectedFilePath;
-    uploader->uploadFile(selectedFilePath);
+    QByteArray fileData = "ADD THE ENCRYPTED FILE DATA HERE";
+    QByteArray dek = "ADD THE DEK HERE";
+    uploader->uploadFile(fileData, dek);
 }
 
 // Slot for handling the backButton's clicked signal
