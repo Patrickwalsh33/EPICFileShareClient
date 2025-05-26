@@ -1,7 +1,7 @@
 #include "UserAuthentication.h"
 #include <QDebug>
 #include <sodium/crypto_aead_chacha20poly1305.h>
-
+#include <sodium.h>
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
     : validator(validator),
@@ -23,21 +23,19 @@ bool UserAuthentication::registerUser(const QString& username, const QString& pa
 
     try
     {
-        std::string longMasterKey = deriveMasterKeyFromPassword(password);
-        std::vector<unsigned char> masterKey(longMasterKey.begin(), longMasterKey.begin() + 32);
+        std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES);
+        randombytes_buf(salt.data(), salt.size());
 
-
-
+        std::vector<unsigned char> masterKey = deriveMasterKeyFromPassword(password, salt);
 
         auto kek = EncryptionKeyGenerator::generateKey(32);
 
         qDebug() << "kek:" << kek;
         std::vector<unsigned char> nonce;
 
-
         auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
 
-        qDebug() << "MasterKey Derived Successfully:" << longMasterKey;
+        qDebug() << "MasterKey Derived Successfully:" << masterKey;
         qDebug() << "User registration successful for:" << username;
         qDebug() << "ENKEK is created: " << encryptedKEK;
 
@@ -59,7 +57,11 @@ std::string UserAuthentication::deriveMasterKeyFromPassword(const QString& passw
 }
 bool UserAuthentication::loginUser(const QString& username, const QString& password, QString& errorMsg) {
    
-    
+
+    try
+    {
+
+    }
     // For now, return success if username and password are not empty
     if (username.isEmpty() || password.isEmpty()) {
         errorMsg = "Username and password cannot be empty";
