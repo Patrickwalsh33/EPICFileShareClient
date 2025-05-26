@@ -47,8 +47,6 @@ add_executable(MyQtApp
         key_management/EncryptionKeyGenerator.h
         key_management/MasterKeyDerivation.cpp
         key_management/MasterKeyDerivation.h
-        key_management/FileKeyManager.cpp
-        key_management/FileKeyManager.h
         key_management/KEKManager.cpp
         key_management/KEKManager.h
         key_management/X3DHKeys/IdentityKeyPair.cpp

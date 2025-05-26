@@ -1,5 +1,4 @@
-#ifndef MASTERKEYDERIVATION_H
-#define MASTERKEYDERIVATION_H
+#pragma once
 #include <string>
 
 class MasterKeyDerivation {
@@ -10,5 +9,3 @@ public:
     std::string deriveMaster(const std::string& password);
     bool verifyMaster(const std::string& hash, const std::string& password);
 };
-
-#endif //MASTERKEYDERIVATION_H

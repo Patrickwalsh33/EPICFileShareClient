@@ -1,5 +1,4 @@
-#ifndef ENCRYPTIONKEYGENERATOR_H
-#define ENCRYPTIONKEYGENERATOR_H
+#pragma once
 #include <vector>
 
 const size_t Encryption_KEY_SIZE = 32;
@@ -18,5 +17,3 @@ public:
     EncryptionKeyGenerator &operator=(const EncryptionKeyGenerator &) = delete;
 
 };
-
-#endif //ENCRYPTIONKEYGENERATOR_H
