@@ -41,6 +41,16 @@ add_executable(MyQtApp
         auth/CommonPasswordChecker.h
         auth/UserAuthentication.cpp
         auth/UserAuthentication.h
+        key_management/EncryptionKeyGenerator.cpp
+        key_management/EncryptionKeyGenerator.h
+        key_management/MasterKeyDerivation.cpp
+        key_management/MasterKeyDerivation.h
+        key_management/FileKeyManager.cpp
+        key_management/FileKeyManager.h
+        key_management/UserKeyGenerator.cpp
+        key_management/UserKeyGenerator.h
+        key_management/KEKManager.cpp
+        key_management/KEKManager.h
 )
 
 target_include_directories(MyQtApp PRIVATE
