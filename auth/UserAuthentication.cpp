@@ -23,23 +23,25 @@ bool UserAuthentication::registerUser(const QString& username, const QString& pa
 
     try
     {
-        std::string MasterKey = deriveMasterKeyFromPassword(password);
-        std::vector<unsigned char> masterKeytest(MasterKey.begin(), MasterKey.end());
-        qDebug() << "MasterKey string length:" << masterKeytest.size();
-        qDebug() << "masterKey vector size:" << masterKeytest.size();
-        qDebug() << "Expected size:" << crypto_aead_chacha20poly1305_ietf_KEYBYTES;
+        std::string longMasterKey = deriveMasterKeyFromPassword(password);
+        std::vector<unsigned char> masterKey(longMasterKey.begin(), longMasterKey.begin() + 32);
+
 
 
 
         auto kek = EncryptionKeyGenerator::generateKey(32);
-        std::vector<unsigned char> masterKey(MasterKey.begin(), MasterKey.end());
+
+        qDebug() << "kek:" << kek;
         std::vector<unsigned char> nonce;
+
 
         auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
 
-        qDebug() << "MasterKey Derived Successfully:" << MasterKey;
+        qDebug() << "MasterKey Derived Successfully:" << longMasterKey;
         qDebug() << "User registration successful for:" << username;
         qDebug() << "ENKEK is created: " << encryptedKEK;
+
+
     } catch (const std::exception& e) {
         errorMsg = QString("Failed to derive master key: %1").arg(e.what());
         return false;
