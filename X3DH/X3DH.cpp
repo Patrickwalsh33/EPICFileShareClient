@@ -1,28 +1,15 @@
-#include "x3dh.h"
+#include "X3DH.h"
+#include "../crypto/crypto_utils.h"
 #include <sodium.h>
 #include <iostream>
 #include <cstring>
 
-void print_hex(const char* label, const unsigned char* data, size_t len) {
-    std::cout << label;
-    for (size_t i = 0; i < len; i++)
-        printf("%02x", data[i]);
-    std::cout << std::endl;
-}
-
 void run_x3dh_demo() {
     if (sodium_init() < 0) {
-// std::cerr is the error output stream, different from std::cout
-// it still lets you print to the console, but it's used for error messages
-// so hypothetically we could redirect all output in std::cerr to a file,
-// and all output in std::cout to the console, so we could clearly see which is which
-
         std::cerr << "Failed to initialize libsodium." << std::endl;
         return;
     }
 
-// first 2 lines here are creating arrays of unsigned chars that the result of the
-// crypto_box_keypair function will be stored in
     unsigned char alice_eph_pk[crypto_box_PUBLICKEYBYTES];
     unsigned char alice_eph_sk[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(alice_eph_pk, alice_eph_sk);
@@ -47,25 +34,15 @@ void run_x3dh_demo() {
     unsigned char dh2[crypto_scalarmult_BYTES];
     unsigned char dh3[crypto_scalarmult_BYTES];
 
-
-    //crypto_scalarmult is a function that computes a Diffie-Hellman shared secret
-    //it multiplies the scalar * point (algo = Curve25519)
-    //the first argument is the result, the second is the scalar, and the third is the point
-    //if any of the functions fail, it will return a non-zero value
-    //first one if for authentication
     if (crypto_scalarmult(dh1, alice_eph_sk, bob_id_pk) != 0 ||
-        //second one is for forward secrecy and resistance to replay attacks
         crypto_scalarmult(dh2, alice_eph_sk, bob_spk_pk) != 0 ||
-        //adds secrecy against compromise of long term id keys
         crypto_scalarmult(dh3, alice_eph_sk, bob_opk_pk) != 0) {
         std::cerr << "[Alice] Failed to compute DH values." << std::endl;
         return;
     }
 
     unsigned char alice_shared[crypto_generichash_BYTES];
-    //structure that holds the state of the BLAKE2b hash function
     crypto_generichash_state state;
-    //initialise the state
     crypto_generichash_init(&state, NULL, 0, sizeof(alice_shared));
     crypto_generichash_update(&state, dh1, sizeof(dh1));
     crypto_generichash_update(&state, dh2, sizeof(dh2));
@@ -94,11 +71,52 @@ void run_x3dh_demo() {
     crypto_generichash_final(&state, bob_shared, sizeof(bob_shared));
     print_hex("[Bob] Combined Shared Secret: ", bob_shared, sizeof(bob_shared));
 
-
-    //should switch to crypto_verify_32
     if (memcmp(alice_shared, bob_shared, sizeof(alice_shared)) == 0) {
         std::cout << "[Success] Shared secrets match!" << std::endl;
     } else {
         std::cerr << "[Error] Shared secrets do not match!" << std::endl;
+        return;
+    }
+
+    // Derive file encryption key from shared secret
+    unsigned char file_key[crypto_aead_chacha20poly1305_ietf_KEYBYTES];
+    if (!derive_key_from_shared_secret(
+            alice_shared,
+            file_key,
+            "filekey0",
+            1)) {
+        std::cerr << "[Error] Failed to derive file encryption key." << std::endl;
+        return;
+    }
+    print_hex("[Derived] File Encryption Key: ", file_key, sizeof(file_key));
+
+    // Encrypt a test message
+    const char* message = "secret file contents";
+    unsigned long long message_len = strlen(message);
+
+    unsigned char ciphertext[1024];
+    unsigned long long ciphertext_len;
+
+    unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES];
+
+    encrypt_with_chacha20(
+            (const unsigned char*)message, message_len,
+            file_key,
+            ciphertext, &ciphertext_len,
+            nonce);
+
+    // Decrypt the test message
+    unsigned char decrypted[1024];
+    unsigned long long decrypted_len;
+
+    if (decrypt_with_chacha20(
+            ciphertext, ciphertext_len,
+            file_key,
+            nonce,
+            decrypted, &decrypted_len)) {
+        decrypted[decrypted_len] = '\0'; // Null terminate
+        std::cout << "Decrypted: " << decrypted << std::endl;
+    } else {
+        std::cerr << "[Error] Decryption failed." << std::endl;
     }
 }
