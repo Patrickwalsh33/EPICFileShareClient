@@ -47,7 +47,7 @@ void run_x3dh_demo() {
             receiverSignedPre.getSignature().data(),
             receiverSignedPre.getPublicKey().data(),
             receiverSignedPre.getPublicKey().size(),
-            receiverCurveIdPub) != 0) {
+            receiverIdentity.getPublicKey().data()) != 0) {
         std::cerr << "[Sender] Signature verification on receiver's signed prekey FAILED!" << std::endl;
         return;
     }
