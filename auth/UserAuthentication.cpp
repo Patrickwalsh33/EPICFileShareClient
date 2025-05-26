@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <sodium/crypto_aead_chacha20poly1305.h>
 #include <sodium.h>
+#include <vector>
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
     : validator(validator),
@@ -54,12 +55,9 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 bool UserAuthentication::loginUser(const QString& username, const QString& password, QString& errorMsg) {
    
 
-    try
-    {
 
-    }
     // For now, return success if username and password are not empty
-    if (username.isEmpty() || password.isEmpty()) {
+    if(username.isEmpty() || password.isEmpty()) {
         errorMsg = "Username and password cannot be empty";
         return false;
     }

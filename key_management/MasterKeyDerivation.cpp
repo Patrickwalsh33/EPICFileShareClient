@@ -28,7 +28,7 @@ std::vector<unsigned char> MasterKeyDerivation::deriveMaster(
         salt.data(),
         crypto_pwhash_OPSLIMIT_MODERATE,
         crypto_pwhash_MEMLIMIT_MODERATE,
-        crypto_pwhash_alg_argon2id13) != 0) {
+        crypto_pwhash_ALG_ARGON2ID13) != 0) {
         throw std::runtime_error("Master Derivation failed");
             }
 
