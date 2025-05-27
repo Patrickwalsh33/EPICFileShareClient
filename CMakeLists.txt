@@ -35,8 +35,8 @@ add_executable(MyQtApp
         FrontEnd/UploadPage/uploadpage.cpp
         FrontEnd/UploadPage/uploadpage.h
         FrontEnd/UploadPage/uploadpage.ui
-        auth/PasswordValidator.cpp
-        auth/PasswordValidator.h
+        auth/Validation.cpp
+        auth/Validation.h
         auth/CommonPasswordChecker.cpp
         auth/CommonPasswordChecker.h
         auth/UserAuthentication.cpp
