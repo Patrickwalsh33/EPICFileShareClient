@@ -3,89 +3,105 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QFileInfo>
+#include <QFile>
 #include <QDebug>
+#include "../../crypto/crypto_utils.h"
 
-
-// Constructor: Initializes the UploadPage dialog and sets up the UI.
 UploadPage::UploadPage(QWidget *parent) :
         QDialog(parent),
         ui(new Ui::UploadPage),
         uploader(new uploadManager(this)) {
     ui->setupUi(this);
 
-    // Initially disable the upload button until a file is selected
     ui->uploadButton->setEnabled(false);
+    ui->encryptButton->setEnabled(false); // Disable encryption initially
     ui->selectedFileLabel->setText("No file selected");
     ui->fileSizeLabel->setText("");
     ui->fileTypeLabel->setText("");
+
     uploader->setServerUrl("https://leftovers.gobbler.info:3333");
 
     connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
         QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
     });
+
     connect(uploader, &uploadManager::uploadFailed, this, [=](const QString &error) {
         QMessageBox::critical(this, "Upload Failed", "Error uploading file: " + error);
     });
 }
-// Destructor: Deletes the UI object to free resources.
-UploadPage::~UploadPage()
-{
+
+UploadPage::~UploadPage() {
     delete ui;
 }
 
-// Slot for handling the selectFileButton's clicked signal
-void UploadPage::on_selectFileButton_clicked()
-{
-    // Open file dialog to select any type of file
-    QString fileName = QFileDialog::getOpenFileName(
-            this,
-            "Select File to Upload",
-            QDir::homePath(), // Start in the user's home directory
-            "All Files (*.*)" // Allow all file types
-    );
+void UploadPage::on_selectFileButton_clicked() {
+    QString fileName = QFileDialog::getOpenFileName(this, "Select File to Upload", QDir::homePath(), "All Files (*.*)");
 
     if (!fileName.isEmpty()) {
         selectedFilePath = fileName;
+
+        QFile file(selectedFilePath);
+        if (!file.open(QIODevice::ReadOnly)) {
+            QMessageBox::warning(this, "File Error", "Failed to open selected file.");
+            return;
+        }
+
+        originalFileData = file.readAll();  // Load file into memory
+        file.close();
+
+        dek = DataEncryptionKey().getKey(); // Generate new DEK on selection
         updateFileInfo();
-        ui->uploadButton->setEnabled(true);
-        qDebug() << "File selected:" << selectedFilePath;
+        ui->encryptButton->setEnabled(true);
+        ui->uploadButton->setEnabled(false); // Must encrypt before upload
+        qDebug() << "File selected and loaded into memory:" << selectedFilePath;
     }
 }
 
-// Slot for handling the uploadButton's clicked signal
-void UploadPage::on_uploadButton_clicked() {
-    qDebug() << "Upload button clicked for file:" << selectedFilePath;
-    if (selectedFilePath.isEmpty()) {
-        QMessageBox::warning(this, "Upload Error", "Please select a file first.");
+void UploadPage::on_encryptButton_clicked() {
+    if (originalFileData.isEmpty()) {
+        QMessageBox::warning(this, "Encryption Error", "No file loaded to encrypt.");
         return;
     }
 
-    QFileInfo fileInfo(selectedFilePath);
-    QString message = QString(
-                              "Selected file: %1\n"
-                              "File size: %2 bytes\n"
-                              "File type: %3")
-            .arg(fileInfo.fileName())
-            .arg(fileInfo.size())
-            .arg(fileInfo.suffix().isEmpty() ? "Unknown" : fileInfo.suffix().toUpper());
+    unsigned long long ciphertext_len;
+    std::vector<unsigned char> ciphertext(originalFileData.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
+    std::vector<unsigned char> nonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
 
-    qDebug() << "Attempting to upload file:" << selectedFilePath;
-    QByteArray fileData = "ADD THE ENCRYPTED FILE DATA HERE";
-    QByteArray EncryptedDek = "ADD THE ENCRYPTED DEK HERE";
-    uploader->uploadFile(fileData, EncryptedDek);
+    encrypt_with_chacha20(
+            reinterpret_cast<const unsigned char*>(originalFileData.constData()),
+            originalFileData.size(),
+            dek.data(),
+            ciphertext.data(),
+            &ciphertext_len,
+            nonce.data()
+    );
+
+    encryptedFileData = QByteArray(reinterpret_cast<const char*>(ciphertext.data()), ciphertext_len);
+    encryptionNonce = QByteArray(reinterpret_cast<const char*>(nonce.data()), nonce.size());
+
+    // Encrypt DEK for storage/transmission (here we just copy it, you'd normally encrypt it with KEK)
+    EncryptedDek = QByteArray(reinterpret_cast<const char*>(dek.data()), dek.size());
+
+    ui->uploadButton->setEnabled(true);
+    ui->encryptButton->setEnabled(false); // Prevent double encryption
+    QMessageBox::information(this, "Encryption Complete", "File has been encrypted and is ready for upload.");
 }
 
-// Slot for handling the backButton's clicked signal
-void UploadPage::on_backButton_clicked()
-{
-    // Close the upload page and return to the previous page
+void UploadPage::on_uploadButton_clicked() {
+    if (encryptedFileData.isEmpty() || EncryptedDek.isEmpty()) {
+        QMessageBox::warning(this, "Upload Error", "Encrypted data is missing.");
+        return;
+    }
+
+    uploader->uploadFile(encryptedFileData, EncryptedDek);
+}
+
+void UploadPage::on_backButton_clicked() {
     reject(); // Close the dialog
     qDebug() << "Back button clicked";
 }
 
-// Updates the file information display
-void UploadPage::updateFileInfo()
-{
+void UploadPage::updateFileInfo() {
     if (selectedFilePath.isEmpty()) {
         ui->selectedFileLabel->setText("No file selected");
         ui->fileSizeLabel->setText("");
@@ -94,25 +110,20 @@ void UploadPage::updateFileInfo()
     }
 
     QFileInfo fileInfo(selectedFilePath);
-
-    // Update the labels with file information
     ui->selectedFileLabel->setText("Selected: " + fileInfo.fileName());
 
-    // Format file size in a human-readable way
     qint64 size = fileInfo.size();
     QString sizeText;
-    if (size < 1024) {
+    if (size < 1024)
         sizeText = QString("%1 bytes").arg(size);
-    } else if (size < 1024 * 1024) {
+    else if (size < 1024 * 1024)
         sizeText = QString("%1 KB").arg(size / 1024.0, 0, 'f', 1);
-    } else if (size < 1024 * 1024 * 1024) {
+    else if (size < 1024 * 1024 * 1024)
         sizeText = QString("%1 MB").arg(size / (1024.0 * 1024.0), 0, 'f', 1);
-    } else {
+    else
         sizeText = QString("%1 GB").arg(size / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
-    }
-    ui->fileSizeLabel->setText("Size: " + sizeText);
 
-    // Display file type
+    ui->fileSizeLabel->setText("Size: " + sizeText);
     QString fileType = fileInfo.suffix().isEmpty() ? "Unknown" : fileInfo.suffix().toUpper() + " File";
     ui->fileTypeLabel->setText("Type: " + fileType);
 }

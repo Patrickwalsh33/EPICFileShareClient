@@ -1,7 +1,3 @@
-//
-// Created by Andrew Jaffray on 26/05/2025.
-//
-
 #include "uploadManager.h"
 #include <QDebug>
 #include <QNetworkAccessManager>

@@ -1,32 +1,41 @@
-
 #pragma once
 
+#include "../../key_management/DataEncryptionKey.h"
 #include "uploadManager.h"
 #include <QDialog>
 #include <QString>
+#include <QByteArray>
+#include <vector>
 
 namespace Ui {
     class UploadPage;
 }
 
-// Defines the UploadPage dialog window for file uploads.
 class UploadPage : public QDialog
 {
-Q_OBJECT // Enables Qt's meta-object system (signals, slots, etc.).
+Q_OBJECT
 
 public:
-    explicit UploadPage(QWidget *parent = nullptr); // Constructor: Initializes the UploadPage.
-    ~UploadPage(); // Destructor: Cleans up resources.
+    explicit UploadPage(QWidget *parent = nullptr);
+    ~UploadPage();
 
 private slots:
-    void on_selectFileButton_clicked(); // Slot for handling file selection button clicks.
-    void on_uploadButton_clicked(); // Slot for handling upload button clicks.
-    void on_backButton_clicked(); // Slot for handling back button clicks.
+    void on_selectFileButton_clicked();
+    void on_encryptButton_clicked();   // 🔐 NEW: Handles encryption
+    void on_uploadButton_clicked();
+    void on_backButton_clicked();
 
 private:
-    Ui::UploadPage *ui; // Pointer to the auto-generated UI class from uploadpage.ui.
-    QString selectedFilePath; // Stores the path of the selected file.
-    void updateFileInfo(); // Updates the file information display.
-    uploadManager *uploader; // Pointer to the upload manager for handling file uploads.
+    Ui::UploadPage *ui;
+    QString selectedFilePath;
+    QByteArray originalFileData;
+    QByteArray encryptedFileData;
+    QByteArray encryptionNonce;
     QByteArray EncryptedDek;
+    std::vector<unsigned char> dek;
+
+    uploadManager *uploader;
+
+    void updateFileInfo();
+    bool encryptSelectedFile();
 };
