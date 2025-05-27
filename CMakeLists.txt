@@ -13,7 +13,7 @@ configure_file(common_passwords.csv ${CMAKE_BINARY_DIR}/common_passwords.csv COP
 
 
 # Qt setup
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium)
@@ -72,6 +72,7 @@ target_link_libraries(MyQtApp
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets
+        Qt6::Network
         PkgConfig::LIBSODIUM
 )
 

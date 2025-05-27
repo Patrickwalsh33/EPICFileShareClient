@@ -18,6 +18,7 @@ UploadPage::UploadPage(QWidget *parent) :
     ui->selectedFileLabel->setText("No file selected");
     ui->fileSizeLabel->setText("");
     ui->fileTypeLabel->setText("");
+    uploader->setServerUrl("https://leftovers.gobbler.info:3333");
 
     connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
         QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
@@ -60,7 +61,7 @@ void UploadPage::on_uploadButton_clicked() {
     }
 
     QFileInfo fileInfo(selectedFilePath);
-    QString message = QString("Upload functionality will be implemented later.\n\n"
+    QString message = QString(
                               "Selected file: %1\n"
                               "File size: %2 bytes\n"
                               "File type: %3")
@@ -69,7 +70,9 @@ void UploadPage::on_uploadButton_clicked() {
             .arg(fileInfo.suffix().isEmpty() ? "Unknown" : fileInfo.suffix().toUpper());
 
     qDebug() << "Attempting to upload file:" << selectedFilePath;
-    uploader->uploadFile(selectedFilePath);
+    QByteArray fileData = "ADD THE ENCRYPTED FILE DATA HERE";
+    QByteArray EncryptedDek = "ADD THE ENCRYPTED DEK HERE";
+    uploader->uploadFile(fileData, EncryptedDek);
 }
 
 // Slot for handling the backButton's clicked signal
