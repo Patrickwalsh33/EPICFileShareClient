@@ -1,6 +1,4 @@
-#ifndef X3DH_H
-#define X3DH_H
+#pragma once
+#include <cstddef>
 
-void run_x3dh_demo();
-
-#endif // X3DH_H
+bool run_x3dh(unsigned char* outSharedSecret, size_t outLen);

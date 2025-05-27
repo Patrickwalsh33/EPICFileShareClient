@@ -1,5 +1,4 @@
-#ifndef MASTERKEYDERIVATION_H
-#define MASTERKEYDERIVATION_H
+#pragma once
 #include <string>
 #include <vector>
 #include <sodium.h>
@@ -12,5 +11,3 @@ public:
     std::vector<unsigned char> deriveMaster(const std::string& password, const std::vector<unsigned char>& salt);
     bool verifyMaster(const std::string& hash, const std::string& password);
 };
-
-#endif //MASTERKEYDERIVATION_H

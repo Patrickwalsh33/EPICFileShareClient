@@ -47,12 +47,20 @@ add_executable(MyQtApp
         key_management/EncryptionKeyGenerator.h
         key_management/MasterKeyDerivation.cpp
         key_management/MasterKeyDerivation.h
-        key_management/FileKeyManager.cpp
-        key_management/FileKeyManager.h
-        key_management/UserKeyGenerator.cpp
-        key_management/UserKeyGenerator.h
         key_management/KEKManager.cpp
         key_management/KEKManager.h
+        key_management/X3DHKeys/IdentityKeyPair.cpp
+        key_management/X3DHKeys/IdentityKeyPair.h
+        key_management/X3DHKeys/EphemeralKeyPair.h
+        key_management/X3DHKeys/EphemeralKeyPair.cpp
+        key_management/X3DHKeys/OneTimeKeyPair.h
+        key_management/X3DHKeys/OneTimeKeyPair.cpp
+        key_management/X3DHKeys/SignedPreKeyPair.h
+        key_management/X3DHKeys/SignedPreKeyPair.cpp
+        Testing/X3DHTest.cpp
+        Testing/X3DHTest.h
+        key_management/DataEncryptionKey.h
+        key_management/DataEncryptionKey.cpp
 )
 
 target_include_directories(MyQtApp PRIVATE

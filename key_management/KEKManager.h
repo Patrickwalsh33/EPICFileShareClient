@@ -1,5 +1,4 @@
-#ifndef KEKMANAGER_H
-#define KEKMANAGER_H
+#pragma once
 #include <vector>
 #include "EncryptionKeyGenerator.h"
 
@@ -12,7 +11,3 @@ public:
     std::vector<unsigned char> decryptKEK(const std::vector<unsigned char>& masterKey, const std::vector<unsigned char>& kek, std::vector<unsigned char>& nonce);
 
 };
-
-
-
-#endif //KEKMANAGER_H
