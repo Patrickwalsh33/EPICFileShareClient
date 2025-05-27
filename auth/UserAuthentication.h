@@ -2,7 +2,7 @@
 #define USERAUTHENTICATION_H
 
 #include <QString>
-#include "PasswordValidator.h"
+#include "validation.h"
 #include "../key_management/MasterKeyDerivation.h"
 #include "../key_management/EncryptionKeyGenerator.h"
 #include "../key_management/KEKManager.h"
