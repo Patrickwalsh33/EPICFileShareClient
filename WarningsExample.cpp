@@ -9,7 +9,7 @@ int computeSum(const std::vector<int>& numbers) {
     return sum;
 }
 
-int dylan() {
+int main() {
     int unusedVariable = 42;  // Warning: unused variable
 
     std::vector<int> values = {1, 2, 3, 4, 5};
