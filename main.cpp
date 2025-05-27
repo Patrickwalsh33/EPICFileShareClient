@@ -11,12 +11,12 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-//    HomePage homePage;
-//    homePage.show();
+    HomePage homePage;
+    homePage.show();
 
-//      test_file_encryption_flow();
-    DataEncryptionKey dataKey;
-    print_hex("Randomly Generated Data Key: ", dataKey.getKey().data(), dataKey.getKey().size());
+//    test_file_encryption_flow();
+//    DataEncryptionKey dataKey;
+//    print_hex("Randomly Generated Data Key: ", dataKey.getKey().data(), dataKey.getKey().size());
 
     return app.exec();
 }
