@@ -1,5 +1,5 @@
-#ifndef UPLOADPAGE_H
-#define UPLOADPAGE_H
+
+#pragma once
 
 #include "uploadManager.h"
 #include <QDialog>
@@ -28,6 +28,5 @@ private:
     QString selectedFilePath; // Stores the path of the selected file.
     void updateFileInfo(); // Updates the file information display.
     uploadManager *uploader; // Pointer to the upload manager for handling file uploads.
+    QByteArray EncryptedDek;
 };
-
-#endif // UPLOADPAGE_H
