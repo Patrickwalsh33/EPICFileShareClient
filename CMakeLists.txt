@@ -61,6 +61,8 @@ add_executable(MyQtApp
         Testing/X3DHTest.h
         key_management/DataEncryptionKey.h
         key_management/DataEncryptionKey.cpp
+        key_management/KeyEncryptor.h
+        key_management/KeyEncryptor.cpp
 )
 
 target_include_directories(MyQtApp PRIVATE
