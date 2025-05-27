@@ -93,7 +93,6 @@ jobs:
             
             This will apply suggested fixes to the files in-place.
             
-            > 💡 Tip: Run this locally and inspect the diffs before committing.
             
             </details>`
             : '## ✅ Clang-Tidy Report\n\nNo issues found in the changed files! 🎉';
