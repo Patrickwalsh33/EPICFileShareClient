@@ -71,8 +71,8 @@ void UploadPage::on_uploadButton_clicked() {
 
     qDebug() << "Attempting to upload file:" << selectedFilePath;
     QByteArray fileData = "ADD THE ENCRYPTED FILE DATA HERE";
-    QByteArray dek = "ADD THE DEK HERE";
-    uploader->uploadFile(fileData, dek);
+    QByteArray EncryptedDek = "ADD THE ENCRYPTED DEK HERE";
+    uploader->uploadFile(fileData, EncryptedDek);
 }
 
 // Slot for handling the backButton's clicked signal

@@ -28,5 +28,5 @@ private:
     QString selectedFilePath; // Stores the path of the selected file.
     void updateFileInfo(); // Updates the file information display.
     uploadManager *uploader; // Pointer to the upload manager for handling file uploads.
-    QByteArray dek;
+    QByteArray EncryptedDek;
 };
