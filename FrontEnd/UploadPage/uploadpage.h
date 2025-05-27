@@ -9,10 +9,32 @@
 #include <QFrame>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QPushButton>
 
 namespace Ui {
     class UploadPage;
 }
+
+class HoverButton : public QPushButton {
+    Q_OBJECT
+public:
+    explicit HoverButton(QWidget *parent = nullptr) : QPushButton(parent) {
+        setMouseTracking(true);
+    }
+
+protected:
+    void enterEvent(QEnterEvent *event) override {
+        if (isEnabled()) {
+            setCursor(Qt::PointingHandCursor);
+        }
+        QPushButton::enterEvent(event);
+    }
+
+    void leaveEvent(QEvent *event) override {
+        setCursor(Qt::ArrowCursor);
+        QPushButton::leaveEvent(event);
+    }
+};
 
 class ClickableFrame : public QFrame {
     Q_OBJECT

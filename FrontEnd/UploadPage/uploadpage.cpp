@@ -14,6 +14,43 @@ UploadPage::UploadPage(QWidget *parent) :
         selectedFileIndex(static_cast<size_t>(-1)) {  // Initialize with invalid index
     ui->setupUi(this);
 
+    // Replace the standard buttons with HoverButton
+    HoverButton* selectFileBtn = new HoverButton(this);
+    selectFileBtn->setGeometry(ui->selectFileButton->geometry());
+    selectFileBtn->setText(ui->selectFileButton->text());
+    selectFileBtn->setStyleSheet(ui->selectFileButton->styleSheet());
+    selectFileBtn->setObjectName("selectFileButton");
+    delete ui->selectFileButton;
+    ui->selectFileButton = selectFileBtn;
+    connect(ui->selectFileButton, &QPushButton::clicked, this, &UploadPage::on_selectFileButton_clicked);
+
+    HoverButton* encryptBtn = new HoverButton(this);
+    encryptBtn->setGeometry(ui->encryptButton->geometry());
+    encryptBtn->setText(ui->encryptButton->text());
+    encryptBtn->setStyleSheet(ui->encryptButton->styleSheet());
+    encryptBtn->setObjectName("encryptButton");
+    delete ui->encryptButton;
+    ui->encryptButton = encryptBtn;
+    connect(ui->encryptButton, &QPushButton::clicked, this, &UploadPage::on_encryptButton_clicked);
+
+    HoverButton* uploadBtn = new HoverButton(this);
+    uploadBtn->setGeometry(ui->uploadButton->geometry());
+    uploadBtn->setText(ui->uploadButton->text());
+    uploadBtn->setStyleSheet(ui->uploadButton->styleSheet());
+    uploadBtn->setObjectName("uploadButton");
+    delete ui->uploadButton;
+    ui->uploadButton = uploadBtn;
+    connect(ui->uploadButton, &QPushButton::clicked, this, &UploadPage::on_uploadButton_clicked);
+
+    HoverButton* backBtn = new HoverButton(this);
+    backBtn->setGeometry(ui->backButton->geometry());
+    backBtn->setText(ui->backButton->text());
+    backBtn->setStyleSheet(ui->backButton->styleSheet());
+    backBtn->setObjectName("backButton");
+    delete ui->backButton;
+    ui->backButton = backBtn;
+    connect(ui->backButton, &QPushButton::clicked, this, &UploadPage::on_backButton_clicked);
+
     ui->uploadButton->setEnabled(false);
     ui->encryptButton->setEnabled(false);
     ui->uploadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
