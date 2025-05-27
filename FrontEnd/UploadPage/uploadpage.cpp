@@ -84,7 +84,15 @@ void UploadPage::on_encryptButton_clicked() {
 
     ui->uploadButton->setEnabled(true);
     ui->encryptButton->setEnabled(false); // Prevent double encryption
-    QMessageBox::information(this, "Encryption Complete", "File has been encrypted and is ready for upload.");
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Encryption Complete");
+    msgBox.setText("File has been encrypted and is ready for upload.");
+    msgBox.setStyleSheet("QMessageBox { background-color: #f0f0f0; }"
+                        "QMessageBox QLabel { color: #333333; font-size: 12px; }"
+                        "QPushButton { background-color: #2196F3; color: white; border: none; padding: 5px 15px; border-radius: 3px; }"
+                        "QPushButton:hover { background-color: #1976D2; }");
+    msgBox.exec();
 }
 
 void UploadPage::on_uploadButton_clicked() {
