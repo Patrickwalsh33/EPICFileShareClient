@@ -12,7 +12,7 @@ void test_file_encryption_flow() {
         return;
     }
 
-    // === Derive key from shared secret
+    // Derive key from shared secret
     unsigned char fileKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES];
     if (!derive_key_from_shared_secret(sharedSecret, fileKey, "filekey0", 1)) {
         std::cerr << "[TEST] Failed to derive file key." << std::endl;
@@ -21,7 +21,7 @@ void test_file_encryption_flow() {
 
     print_hex("[TEST] Derived File Key: ", fileKey, sizeof(fileKey));
 
-    // === Encrypt test message
+    // Encrypt test message
     const char* message = "secret file contents";
     unsigned char ciphertext[1024], nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES];
     unsigned long long ciphertextLen;
@@ -29,7 +29,7 @@ void test_file_encryption_flow() {
     encrypt_with_chacha20(reinterpret_cast<const unsigned char*>(message), strlen(message),
                           fileKey, ciphertext, &ciphertextLen, nonce);
 
-    // === Decrypt
+    // Decrypt
     unsigned char decrypted[1024];
     unsigned long long decryptedLen;
 
