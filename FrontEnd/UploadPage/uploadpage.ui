@@ -46,9 +46,9 @@
   <widget class="QPushButton" name="selectFileButton">
    <property name="geometry">
     <rect>
-     <x>100</x>
+     <x>150</x>
      <y>130</y>
-     <width>150</width>
+     <width>200</width>
      <height>40</height>
     </rect>
    </property>
@@ -59,116 +59,54 @@
     <string>Select File</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="encryptButton">
-   <property name="geometry">
-    <rect>
-     <x>260</x>
-     <y>130</y>
-     <width>150</width>
-     <height>40</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: white; background-color: #FF9800; border: none; border-radius: 5px; font-size: 14px;</string>
-   </property>
-   <property name="text">
-    <string>Encrypt File</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="selectedFileLabel">
+  <widget class="QScrollArea" name="fileScrollArea">
    <property name="geometry">
     <rect>
      <x>50</x>
      <y>190</y>
      <width>400</width>
-     <height>25</height>
+     <height>150</height>
     </rect>
    </property>
-   <property name="styleSheet">
-    <string notr="true">color: black; font-size: 12px;</string>
-   </property>
-   <property name="text">
-    <string>No file selected</string>
-   </property>
-   <property name="alignment">
-    <set>Qt::AlignmentFlag::AlignCenter</set>
-   </property>
-  </widget>
-  <widget class="QLabel" name="fileSizeLabel">
-   <property name="geometry">
-    <rect>
-     <x>50</x>
-     <y>220</y>
-     <width>400</width>
-     <height>25</height>
-    </rect>
+   <property name="widgetResizable">
+    <bool>true</bool>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: black; font-size: 12px;</string>
+    <string notr="true">border: none; background-color: transparent;</string>
    </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="alignment">
-    <set>Qt::AlignmentFlag::AlignCenter</set>
-   </property>
-  </widget>
-  <widget class="QLabel" name="fileTypeLabel">
-   <property name="geometry">
-    <rect>
-     <x>50</x>
-     <y>250</y>
-     <width>400</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: black; font-size: 12px;</string>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="alignment">
-    <set>Qt::AlignmentFlag::AlignCenter</set>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="uploadButton">
-   <property name="geometry">
-    <rect>
-     <x>150</x>
-     <y>300</y>
-     <width>200</width>
-     <height>40</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: white; background-color: #2196F3; border: none; border-radius: 5px; font-size: 14px;</string>
-   </property>
-   <property name="text">
-    <string>Upload File</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="backButton">
-   <property name="geometry">
-    <rect>
-     <x>50</x>
-     <y>380</y>
-     <width>100</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: black; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 3px;</string>
-   </property>
-   <property name="text">
-    <string>Back</string>
-   </property>
+   <widget class="QWidget" name="scrollAreaWidgetContents">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>400</width>
+      <height>150</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <property name="spacing">
+      <number>5</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+    </layout>
+   </widget>
   </widget>
   <widget class="QLabel" name="instructionLabel">
    <property name="geometry">
     <rect>
      <x>50</x>
-     <y>360</y>
+     <y>350</y>
      <width>400</width>
      <height>16</height>
     </rect>
@@ -181,6 +119,54 @@
    </property>
    <property name="alignment">
     <set>Qt::AlignmentFlag::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="encryptButton">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>380</y>
+     <width>180</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;</string>
+   </property>
+   <property name="text">
+    <string>Encrypt File</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="uploadButton">
+   <property name="geometry">
+    <rect>
+     <x>340</x>
+     <y>380</y>
+     <width>180</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;</string>
+   </property>
+   <property name="text">
+    <string>Upload File</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="backButton">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>380</y>
+     <width>80</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: black; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 3px;</string>
+   </property>
+   <property name="text">
+    <string>Back</string>
    </property>
   </widget>
  </widget>

@@ -6,10 +6,59 @@
 #include <QString>
 #include <QByteArray>
 #include <vector>
+#include <QFrame>
+#include <QLabel>
+#include <QMouseEvent>
 
 namespace Ui {
     class UploadPage;
 }
+
+class ClickableFrame : public QFrame {
+    Q_OBJECT
+public:
+    explicit ClickableFrame(QWidget *parent = nullptr) : QFrame(parent) {
+        setMouseTracking(true);
+        setFocusPolicy(Qt::StrongFocus);
+    }
+
+signals:
+    void clicked();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        if (event->button() == Qt::LeftButton) {
+            emit clicked();
+            event->accept();
+        }
+    }
+
+    void enterEvent(QEnterEvent *event) override {
+        setCursor(Qt::PointingHandCursor);
+        QFrame::enterEvent(event);
+    }
+
+    void leaveEvent(QEvent *event) override {
+        setCursor(Qt::ArrowCursor);
+        QFrame::leaveEvent(event);
+    }
+};
+
+struct FileInfo {
+    QString path;
+    QByteArray originalData;
+    QByteArray encryptedData;
+    QByteArray encryptionNonce;
+    QByteArray encryptedDek;
+    std::vector<unsigned char> dek;
+    bool isEncrypted;
+    ClickableFrame* displayBox;
+    QLabel* nameLabel;
+    QLabel* sizeLabel;
+    QLabel* typeLabel;
+    QLabel* statusLabel;
+    size_t index;
+};
 
 class UploadPage : public QDialog
 {
@@ -24,18 +73,16 @@ private slots:
     void on_encryptButton_clicked();   // 🔐 NEW: Handles encryption
     void on_uploadButton_clicked();
     void on_backButton_clicked();
+    void onFileBoxClicked(size_t index);
 
 private:
     Ui::UploadPage *ui;
-    QString selectedFilePath;
-    QByteArray originalFileData;
-    QByteArray encryptedFileData;
-    QByteArray encryptionNonce;
-    QByteArray EncryptedDek;
-    std::vector<unsigned char> dek;
-
+    std::vector<FileInfo> files;
+    size_t selectedFileIndex;
     uploadManager *uploader;
 
-    void updateFileInfo();
-    bool encryptSelectedFile();
+    void updateFileInfo(size_t index);
+    void createFileBox(FileInfo& fileInfo);
+    void updateButtonStates();
+    QString formatFileSize(qint64 size);
 };
