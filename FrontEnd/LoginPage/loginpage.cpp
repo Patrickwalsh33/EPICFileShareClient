@@ -2,6 +2,7 @@
 #include "ui_loginpage.h"
 #include <QDebug>
 #include "../UploadPage/uploadpage.h"
+#include "../ChangePasswordPage/changepasswordpage.h"
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
 LoginPage::LoginPage(QWidget *parent) :
@@ -35,4 +36,16 @@ void LoginPage::on_loginButton_clicked(){
 void LoginPage::on_goToRegistationButton_clicked()
 {
     qDebug() << "goToRegistationButton_clicked";
+}
+
+// Slot for handling the changePasswordButton's clicked signal.
+void LoginPage::on_changePasswordButton_clicked()
+{
+    qDebug() << "changePasswordButton_clicked on LoginPage";
+    
+    ChangePasswordPage changePasswordDialog(this);
+    changePasswordDialog.setAttribute(Qt::WA_DeleteOnClose);
+    
+    // Show as modal dialog - don't close LoginPage
+    changePasswordDialog.exec(); // Show ChangePasswordPage modally
 }

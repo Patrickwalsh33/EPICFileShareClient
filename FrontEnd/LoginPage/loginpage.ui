@@ -127,7 +127,7 @@
    <property name="geometry">
     <rect>
      <x>269</x>
-     <y>360</y>
+     <y>340</y>
      <width>121</width>
      <height>32</height>
     </rect>
@@ -139,20 +139,36 @@
     <string>create account</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="changePasswordButton">
+   <property name="geometry">
+    <rect>
+     <x>140</x>
+     <y>340</y>
+     <width>121</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: white; background: darkblue;</string>
+   </property>
+   <property name="text">
+    <string>Change Password</string>
+   </property>
+  </widget>
   <widget class="QLabel" name="errorLabel">
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>370</y>
-     <width>131</width>
+     <y>380</y>
+     <width>341</width>
      <height>16</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: black;</string>
+    <string notr="true">color: red;</string>
    </property>
    <property name="text">
-    <string>Error message here</string>
+    <string></string>
    </property>
   </widget>
  </widget>

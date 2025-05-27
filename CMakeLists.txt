@@ -30,6 +30,8 @@ add_executable(MyQtApp
         X3DH/X3DH.cpp
         FrontEnd/RegisterPage/registerpage.cpp
         FrontEnd/RegisterPage/registerpage.ui
+        FrontEnd/ChangePasswordPage/changepasswordpage.cpp  # TODO: Implement change password functionality
+        FrontEnd/ChangePasswordPage/changepasswordpage.ui  # TODO: Implement change password functionality
         crypto/crypto_utils.cpp
         crypto/crypto_utils.h
         FrontEnd/UploadPage/uploadpage.cpp

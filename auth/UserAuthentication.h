@@ -17,6 +17,9 @@ public:
     
     // Login a user
     bool loginUser(const QString& username, const QString& password, QString& errorMsg);
+    
+    // Change password for current user
+    bool changePassword(const QString& currentPassword, const QString& newPassword, const QString& confirmNewPassword, QString& errorMsg);
 
 private:
     PasswordValidator* validator;

@@ -68,6 +68,62 @@ bool UserAuthentication::loginUser(const QString& username, const QString& passw
     
     return true;
 }
+
+bool UserAuthentication::changePassword(const QString& currentPassword, const QString& newPassword, const QString& confirmNewPassword, QString& errorMsg) {
+    // Validate current password is not empty
+    if (currentPassword.isEmpty()) {
+        errorMsg = "Current password cannot be empty";
+        return false;
+    }
+    
+    // TODO: Verify current password against stored credentials
+    // For now, we'll simulate this check
+    if (currentPassword.length() < 1) {
+        errorMsg = "Current password is incorrect";
+        return false;
+    }
+    
+    // Validate new password using existing validation logic
+    if (!validator->validatePassword(newPassword, confirmNewPassword, errorMsg)) {
+        return false;
+    }
+    
+    // Check that new password is different from current password
+    if (currentPassword == newPassword) {
+        errorMsg = "New password must be different from current password";
+        return false;
+    }
+    
+    std::string newPasswordStr = newPassword.toStdString();
+    
+    try {
+        // Generate new salt for the new password
+        std::vector<unsigned char> newSalt(crypto_pwhash_SALTBYTES);
+        randombytes_buf(newSalt.data(), newSalt.size());
+        
+        // Derive new master key from new password
+        std::vector<unsigned char> newMasterKey = masterKeyDerivation->deriveMaster(newPasswordStr, newSalt);
+        
+        // Generate new KEK
+        auto newKek = EncryptionKeyGenerator::generateKey(32);
+        
+        std::vector<unsigned char> nonce;
+        auto encryptedNewKEK = kekManager->encryptKEK(newMasterKey, newKek, nonce);
+        
+        qDebug() << "Password change successful - New MasterKey derived:" << newMasterKey;
+        qDebug() << "New encrypted KEK created:" << encryptedNewKEK;
+        
+        // TODO: Update stored credentials in database
+        // TODO: Re-encrypt existing data with new keys if necessary
+        
+    } catch (const std::exception& e) {
+        errorMsg = QString("Failed to change password: %1").arg(e.what());
+        return false;
+    }
+    
+    return true;
+}
+
 UserAuthentication::~UserAuthentication()
 {
     delete masterKeyDerivation;
