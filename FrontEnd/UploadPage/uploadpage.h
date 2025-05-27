@@ -1,7 +1,3 @@
-//
-// Created by Andrew Jaffray on 23/05/2025.
-//
-
 #ifndef UPLOADPAGE_H
 #define UPLOADPAGE_H
 

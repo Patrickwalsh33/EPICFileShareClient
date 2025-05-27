@@ -1,9 +1,3 @@
-//
-// Created by Andrew Jaffray on 23/05/2025.
-//
-
-// You may need to build the project (run Qt uic code generator) to get "ui_uploadpage.h" resolved
-
 #include "uploadpage.h"
 #include "ui_uploadpage.h"
 #include <QFileDialog>

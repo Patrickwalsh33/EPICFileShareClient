@@ -1,4 +1,0 @@
-#ifndef AUTHPROTOCOL_H
-#define AUTHPROTOCOL_H
-
-#endif //AUTHPROTOCOL_H
