@@ -35,7 +35,7 @@ jobs:
       - name: Get list of changed C++ files
         id: changed-files
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '.*\.(cpp|h|hpp|cc|cxx)$' || true)
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '.*\.(cpp|h|hpp|cc|cxx)$' | tr '\n' ' ' || true)
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           
           if [[ -n "$CHANGED_FILES" ]]; then
@@ -69,38 +69,43 @@ jobs:
           script: |
             const fs = require('fs');
             const path = 'build/tidy-report.txt';
-            if (fs.existsSync(path)) {
-              const report = fs.readFileSync(path, 'utf8').trim();
-              const changedFiles = process.env.CHANGED_FILES || '<file-list>';
+            
+            if (!fs.existsSync(path)) {
+              console.log('Tidy report file not found');
+              return;
+            }
+            
+            const report = fs.readFileSync(path, 'utf8').trim();
+            const changedFiles = process.env.CHANGED_FILES || '<file-list>';
 
-              const body = report
-                ? `## 🔍 Clang-Tidy Report
-  
+            const body = report
+              ? `## 🔍 Clang-Tidy Report
+
             \`\`\`
             ${report}
             \`\`\`
-          
+
             ---
-            
+
             <details>
             <summary>💡 How to fix most issues</summary>
 
-          Most issues can be fixed automatically with:
+            Most issues can be fixed automatically with:
 
             \`\`\`bash
             clang-tidy -p build --fix-errors ${changedFiles}
             \`\`\`
-            
+
             This will apply suggested fixes to the files in-place.
-            
-            
+
             </details>`
-            : '## ✅ Clang-Tidy Report\n\nNo issues found in the changed files! 🎉';
+              : `## ✅ Clang-Tidy Report
+
+            No issues found in the changed files! 🎉`;
             
-              github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: body
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
             });
-            }
