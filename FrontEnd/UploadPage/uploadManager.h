@@ -16,7 +16,7 @@ public:
     ~uploadManager();
 
     void setServerUrl(const QString &url);
-    bool uploadFile(const QByteArray &fileData, const QByteArray &EncryptedDek); //the filepath might have to be changed to a QByteArray if we want to send the file contents directly
+    bool uploadFile(const QByteArray &fileData, const QByteArray &EncryptedDek, const QString &fileName, const QString &mimeType, const QByteArray &ephemeralKey, const QString &uuid, const QByteArray &oneTimePreKey); //the filepath might have to be changed to a QByteArray if we want to send the file contents directly
 
 signals:
     void uploadSucceeded(const QByteArray &EncryptedDek);

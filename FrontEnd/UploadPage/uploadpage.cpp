@@ -4,6 +4,9 @@
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QDebug>
+#include <QFile>
+#include <QMimeDatabase>
+#include <QUuid>
 
 
 // Constructor: Initializes the UploadPage dialog and sets up the UI.
@@ -18,7 +21,7 @@ UploadPage::UploadPage(QWidget *parent) :
     ui->selectedFileLabel->setText("No file selected");
     ui->fileSizeLabel->setText("");
     ui->fileTypeLabel->setText("");
-    uploader->setServerUrl("https://leftovers.gobbler.info:3333");
+    uploader->setServerUrl("https://127.0.0.1:3333/upload");
 
     connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
         QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
@@ -60,6 +63,20 @@ void UploadPage::on_uploadButton_clicked() {
         return;
     }
 
+    QFile file(selectedFilePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, "Upload Error", "Failed to read the selected file: " + file.errorString());
+        return;
+    }
+
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    if (fileData.isEmpty()) {
+        QMessageBox::warning(this, "Upload Error", "The selected file is empty.");
+        return;
+    }
+
     QFileInfo fileInfo(selectedFilePath);
     QString message = QString(
                               "Selected file: %1\n"
@@ -68,11 +85,26 @@ void UploadPage::on_uploadButton_clicked() {
             .arg(fileInfo.fileName())
             .arg(fileInfo.size())
             .arg(fileInfo.suffix().isEmpty() ? "Unknown" : fileInfo.suffix().toUpper());
+    QString fileName = fileInfo.fileName();
+    QMimeDatabase mimeDb;
+    QString mimeType = mimeDb.mimeTypeForFile(selectedFilePath).name();
+
+    qDebug() << "File name:" << fileName;
+    qDebug() << "MIME type:" << mimeType;
+    qDebug() << "File size:" << fileData.size() << "bytes";
+
+
+    // Generate UUID for this upload
+    QString uploadUuid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    qDebug() << "Generated UUID:" << uploadUuid;
 
     qDebug() << "Attempting to upload file:" << selectedFilePath;
-    QByteArray fileData = "ADD THE ENCRYPTED FILE DATA HERE";
-    QByteArray EncryptedDek = "ADD THE ENCRYPTED DEK HERE";
-    uploader->uploadFile(fileData, EncryptedDek);
+    QByteArray EncryptedDek = "TEST_ENCRYPTED_DEK_PLACEHOLDER";
+    QByteArray ephemeralKey = "TEST_EPHEMERAL_KEY_PLACEHOLDER";
+    QByteArray oneTimePreKey = "TEST_ONE_TIME_PRE_KEY_PLACEHOLDER";
+
+
+    uploader->uploadFile(fileData, EncryptedDek, fileName, mimeType, ephemeralKey, uploadUuid, oneTimePreKey);
 }
 
 // Slot for handling the backButton's clicked signal
