@@ -70,8 +70,9 @@ struct FileInfo {
     QString path;
     QByteArray originalData;
     QByteArray encryptedData;
-    QByteArray encryptionNonce;
+    QByteArray encryptedFileNonce;
     QByteArray encryptedDek;
+    QByteArray encryptedDekNonce;
     std::vector<unsigned char> dek;
     bool isEncrypted;
     ClickableFrame* displayBox;
@@ -82,8 +83,11 @@ struct FileInfo {
     size_t index;
 };
 
+//declaring upload class that inherits from QDialog
 class UploadPage : public QDialog
 {
+    //macro that enables use of signals and slots
+    //preprocessor directive that runs before compiling
 Q_OBJECT
 
 public:

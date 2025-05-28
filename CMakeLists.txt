@@ -63,6 +63,8 @@ add_executable(MyQtApp
         key_management/DataEncryptionKey.cpp
         key_management/KeyEncryptor.h
         key_management/KeyEncryptor.cpp
+        crypto/uploadEncryption.h
+        crypto/uploadEncryption.cpp
 )
 
 target_include_directories(MyQtApp PRIVATE

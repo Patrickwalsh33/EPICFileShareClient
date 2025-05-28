@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 void print_hex(const char* label, const unsigned char* data, size_t len) {
     std::cout << label;
@@ -58,3 +59,35 @@ bool decrypt_with_chacha20(const unsigned char* ciphertext, unsigned long long c
     }
     return true;
 }
+
+bool decrypt_dek(
+        const std::vector<unsigned char>& encryptedDek,
+        unsigned long long encryptedDekLen,
+        const std::vector<unsigned char>& dekNonce,
+        const unsigned char* derivedKey,
+        std::vector<unsigned char>& decryptedDekOut
+) {
+    decryptedDekOut.resize(encryptedDekLen - crypto_aead_chacha20poly1305_ietf_ABYTES);
+
+    unsigned long long decryptedLen = 0;
+    if (crypto_aead_chacha20poly1305_ietf_decrypt(
+            decryptedDekOut.data(), &decryptedLen,
+            nullptr,
+            encryptedDek.data(), encryptedDekLen,
+            nullptr, 0,
+            dekNonce.data(),
+            derivedKey
+    ) != 0) {
+        std::cerr << "[X3DH] Failed to decrypt DEK." << std::endl;
+        return false;
+    }
+
+    if (decryptedLen != decryptedDekOut.size()) {
+        std::cerr << "[X3DH] Decrypted DEK size mismatch." << std::endl;
+        return false;
+    }
+
+    std::cout << "[X3DH] DEK successfully decrypted and verified." << std::endl;
+    return true;
+}
+
