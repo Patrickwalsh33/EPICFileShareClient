@@ -1,7 +1,7 @@
-#ifndef LOGINPAGE_H
-#define LOGINPAGE_H
-
+#pragma once
 #include <QDialog>
+#include "loginManager.h"
+
 namespace Ui {
 class LoginPage;
 }
@@ -18,9 +18,15 @@ public:
 private slots:
     void on_loginButton_clicked(); // Slot for handling loginButton clicks.
     void on_goToRegistationButton_clicked(); // Slot for handling goToRegistationButton clicks.
+    void onChallengeReceived(const QByteArray &nonce);
+    void onChallengeFailed(const QString &error);
+    void onLoginSucceeded();
+    void onLoginFailed(const QString &error);
+
 
 private:
     Ui::LoginPage *ui; // Pointer to the auto-generated UI class from loginpage.ui.
+    LoginManager *loginManager;
+    QByteArray currentNonce; // Store the received nonce for signing
+    QString currentUsername;
 };
-
-#endif 
