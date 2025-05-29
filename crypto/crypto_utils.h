@@ -1,6 +1,7 @@
 #pragma once
 #include <sodium.h>
 #include <cstddef>
+#include <vector>
 
 // Print binary data as a hex string with a label
 void print_hex(const char* label, const unsigned char* data, size_t len);
@@ -25,3 +26,11 @@ bool decrypt_with_chacha20(
         const unsigned char key[crypto_aead_chacha20poly1305_ietf_KEYBYTES],
         const unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES],
         unsigned char* decrypted, unsigned long long* decrypted_len);
+
+bool decrypt_dek(
+        const std::vector<unsigned char>& encryptedDek,
+        unsigned long long encryptedDekLen,
+        const std::vector<unsigned char>& dekNonce,
+        const unsigned char* derivedKey,
+        std::vector<unsigned char>& decryptedDekOut
+);
