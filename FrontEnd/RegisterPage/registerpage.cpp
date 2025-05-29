@@ -3,13 +3,8 @@
 #include <QDebug>
 #include <QMessageBox>
 #include "../LoginPage/loginpage.h"
-#include "../../auth/validation.h"
-#include "../../auth/CommonPasswordChecker.h"
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
-#include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
-#include "../../key_management/X3DHKeys/OneTimeKeyPair.h"
-#include "../../key_management/KeyEncryptor.h"
-#include "../../crypto/crypto_utils.h"
+
 
 
 
@@ -25,6 +20,14 @@ RegisterPage::RegisterPage(QWidget *parent) :
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
     userAuth = new UserAuthentication(passwordValidator);
+
+    registerManager = new RegisterManager(this);
+    registerManager ->setServerUrl("https://leftovers.gobbler.info:3333");
+
+    connect(registerManager, &RegisterManager::registrationSucceeded,
+            this, &RegisterPage::onServerRegistrationSucceeded);
+    connect(registerManager, &RegisterManager::registrationFailed,
+            this, &RegisterPage::onServerRegistrationFailed);
 }
 
 // Destructor
@@ -34,6 +37,7 @@ RegisterPage::~RegisterPage()
     delete passwordChecker;
     delete passwordValidator;
     delete userAuth;
+    delete registerManager;
 }
 
 // Slot for handling the registerButton's clicked signal
@@ -46,58 +50,55 @@ void RegisterPage::on_registerButton_clicked()
     QString confirmPassword = ui->confirmPasswordLineEdit->text();
     QString errorMessage;
 
-    std::vector<unsigned char> kek = EncryptionKeyGenerator::generateKey(Encryption_KEY_SIZE);
-    print_hex("KEK: ", kek.data(), kek.size());
-
-    IdentityKeyPair receiverIdentity;
-    SignedPreKeyPair receiverSignedPre(receiverIdentity.getPrivateKey());
-    OneTimeKeyPair receiverOneTime;
-
-    auto identityPrivateKey = receiverIdentity.getPrivateKey();
-    print_hex("Identity Private Key: ", identityPrivateKey.data(), identityPrivateKey.size());
-
-    auto signedPreKeyPrivate = receiverSignedPre.getPrivateKey();
-    print_hex("Signed PreKey Private: ", signedPreKeyPrivate.data(), signedPreKeyPrivate.size());
-
-    auto oneTimeKeyPrivate = receiverOneTime.getPrivateKey();
-    print_hex("One Time Key Private: ", oneTimeKeyPrivate.data(), oneTimeKeyPrivate.size());
-
-    auto encryptedIdentityKey = KeyEncryptor::encrypt(identityPrivateKey, kek);
-    print_hex("Encrypted Identity Key Ciphertext: ", encryptedIdentityKey.ciphertext.data(), encryptedIdentityKey.ciphertext.size());
-    print_hex("Encrypted Identity Key Nonce: ", encryptedIdentityKey.nonce.data(), encryptedIdentityKey.nonce.size());
-
-    auto encryptedSignedPreKey = KeyEncryptor::encrypt(signedPreKeyPrivate, kek);
-    print_hex("Encrypted Signed PreKey Ciphertext: ", encryptedSignedPreKey.ciphertext.data(), encryptedSignedPreKey.ciphertext.size());
-    print_hex("Encrypted Signed PreKey Nonce: ", encryptedSignedPreKey.nonce.data(), encryptedSignedPreKey.nonce.size());
-
-    auto encryptedOneTimeKey = KeyEncryptor::encrypt(oneTimeKeyPrivate, kek);
-    print_hex("Encrypted One Time Key Ciphertext: ", encryptedOneTimeKey.ciphertext.data(), encryptedOneTimeKey.ciphertext.size());
-    print_hex("Encrypted One Time Key Nonce: ", encryptedOneTimeKey.nonce.data(), encryptedOneTimeKey.nonce.size());
-
-
-
-    // Register user using the authentication service
     if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
         ui->errorLabel->setStyleSheet("color: red");
         return;
     }
-    
-    // Show success message
-    QMessageBox::information(this, "Registration Successful", 
-                          "Your account has been created successfully.\n"
-                          "You will now be redirected to the login page.");
-    
-    // Navigate to login page
+
+    ui->errorLabel->setText("Registering with server...");
+    ui->errorLabel->setStyleSheet("color: blue");
+    ui->registerButton->setEnabled(false);
+
+    if (!registerManager->registerUser(username)) {
+        ui->errorLabel->setText("Failed to start server registration");
+        ui->errorLabel->setStyleSheet("color: red");
+        ui->registerButton->setEnabled(true);
+    }
+}
+
+void RegisterPage::onServerRegistrationSucceeded()
+{
+    qDebug() << "Server registration succeeded";
+
+    ui->registerButton->setEnabled(true);
+
+    QMessageBox::information(this, "Registration Successful",
+                             "Your account has been created successfully.\n"
+                             "You will now be redirected to the login page.");
+
     LoginPage loginDialog(nullptr);
     loginDialog.setAttribute(Qt::WA_DeleteOnClose);
 
+    this->accept();
 
-    
-    this->accept(); // Close RegisterPage
-    
-    loginDialog.exec(); // Show LoginPage modally
+    loginDialog.exec();
+
+
 }
+
+void RegisterPage::onServerRegistrationFailed(const QString &error)
+{
+    qDebug() << "Server registration failed:" << error;
+
+    // Re-enable button
+    ui->registerButton->setEnabled(true);
+
+    // Show error message
+    ui->errorLabel->setText("Server registration failed: " + error);
+    ui->errorLabel->setStyleSheet("color: red");
+}
+
 
 // Slot for handling the backToLoginButton's clicked signal
 void RegisterPage::on_backToLoginButton_clicked()
