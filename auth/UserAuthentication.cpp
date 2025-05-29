@@ -107,6 +107,7 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
 
     } catch (const std::exception& e) {
         qDebug() << "error decrypting kek Line 117" << e.what();
+        return false;
     }
 
 
