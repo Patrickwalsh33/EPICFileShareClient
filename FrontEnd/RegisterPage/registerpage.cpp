@@ -10,6 +10,7 @@
 #include "../../key_management/X3DHKeys/OneTimeKeyPair.h"
 #include "../../key_management/KeyEncryptor.h"
 #include "../../crypto/crypto_utils.h"
+#include "keychain/keychain.h"
 
 
 

@@ -67,6 +67,7 @@ add_executable(MyQtApp
 
 target_include_directories(MyQtApp PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Password
+        ${CMAKE_CURRENT_SOURCE_DIR}/keychain/include
 )
 
 target_link_libraries(MyQtApp
