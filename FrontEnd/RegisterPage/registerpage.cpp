@@ -46,54 +46,15 @@ void RegisterPage::on_registerButton_clicked()
     QString confirmPassword = ui->confirmPasswordLineEdit->text();
     QString errorMessage;
 
-    std::vector<unsigned char> kek = EncryptionKeyGenerator::generateKey(Encryption_KEY_SIZE);
-    print_hex("KEK: ", kek.data(), kek.size());
-
-    X3DHKeyBundle bundle;
-
-    auto identityPrivateKey = bundle.identityKeyPair.getPrivateKey();
-    auto signedPreKeyPrivate = bundle.signedPreKeyPair.getPrivateKey();
-    auto oneTimeKeyPrivate = bundle.oneTimeKeyPair.getPrivateKey();
-
-    //encrypted with the kek
-    auto encryptedIdentityKey = KeyEncryptor::encrypt(identityPrivateKey, kek);
-    print_hex("Encrypted Identity Key Ciphertext: ", encryptedIdentityKey.ciphertext.data(), encryptedIdentityKey.ciphertext.size());
-    print_hex("Encrypted Identity Key Nonce: ", encryptedIdentityKey.nonce.data(), encryptedIdentityKey.nonce.size());
-
-    auto encryptedSignedPreKey = KeyEncryptor::encrypt(signedPreKeyPrivate, kek);
-    print_hex("Encrypted Signed PreKey Ciphertext: ", encryptedSignedPreKey.ciphertext.data(), encryptedSignedPreKey.ciphertext.size());
-    print_hex("Encrypted Signed PreKey Nonce: ", encryptedSignedPreKey.nonce.data(), encryptedSignedPreKey.nonce.size());
-
-    auto encryptedOneTimeKey = KeyEncryptor::encrypt(oneTimeKeyPrivate, kek);
-    print_hex("Encrypted One Time Key Ciphertext: ", encryptedOneTimeKey.ciphertext.data(), encryptedOneTimeKey.ciphertext.size());
-    print_hex("Encrypted One Time Key Nonce: ", encryptedOneTimeKey.nonce.data(), encryptedOneTimeKey.nonce.size());
-
-    //storing in os keychain
-    storeEncryptedKey("identityKey", encryptedIdentityKey.ciphertext, encryptedIdentityKey.nonce);
-    storeEncryptedKey("signedPreKey", encryptedSignedPreKey.ciphertext, encryptedSignedPreKey.nonce);
-    storeEncryptedKey("oneTimeKey", encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
-
-    KeyEncryptor::EncryptedData identityEncrypted = loadEncryptedKey("identityKey");
-    KeyEncryptor::EncryptedData  signedPreEncrypted = loadEncryptedKey("signedPreKey");
-    KeyEncryptor::EncryptedData  oneTimeEncrypted   = loadEncryptedKey("oneTimeKey");
-
-    auto decryptedIdentityKey = KeyEncryptor::decrypt(identityEncrypted, kek);
-    auto decryptedSignedPreKey = KeyEncryptor::decrypt(signedPreEncrypted, kek);
-    auto decryptedOneTimeKey = KeyEncryptor::decrypt(oneTimeEncrypted, kek);
-
-    print_hex("Decrypted Identity Key: ", decryptedIdentityKey.data(), decryptedIdentityKey.size());
-    print_hex("Decrypted Signed PreKey: ", decryptedSignedPreKey.data(), decryptedSignedPreKey.size());
-    print_hex("Decrypted One Time Key: ", decryptedOneTimeKey.data(), decryptedOneTimeKey.size());
-
-    bool identityMatch = decryptedIdentityKey == identityPrivateKey;
-    bool signedPreMatch = decryptedSignedPreKey == signedPreKeyPrivate;
-    bool oneTimeMatch = decryptedOneTimeKey == oneTimeKeyPrivate;
-
-    if (identityMatch && signedPreMatch && oneTimeMatch) {
-        std::cout << "Success: All decrypted keys match the original keys!" << std::endl;
-    } else {
-        std::cerr << "Failure: One or more decrypted keys do not match the originals!" << std::endl;
-    }
+//    bool identityMatch = decryptedIdentityKey == identityPrivateKey;
+//    bool signedPreMatch = decryptedSignedPreKey == signedPreKeyPrivate;
+//    bool oneTimeMatch = decryptedOneTimeKey == oneTimeKeyPrivate;
+//
+//    if (identityMatch && signedPreMatch && oneTimeMatch) {
+//        std::cout << "Success: All decrypted keys match the original keys!" << std::endl;
+//    } else {
+//        std::cerr << "Failure: One or more decrypted keys do not match the originals!" << std::endl;
+//    }
 
 
     // Register user using the authentication service

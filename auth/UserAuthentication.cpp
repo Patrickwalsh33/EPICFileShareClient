@@ -3,6 +3,7 @@
 #include <sodium/crypto_aead_chacha20poly1305.h>
 #include <sodium.h>
 #include <vector>
+#include "../key_management/KEKManager.h"
 
 
 static std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES);
@@ -38,8 +39,10 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
         auto kek = EncryptionKeyGenerator::generateKey(32); //Generates the KEK
 
         qDebug() << "kek:" << kek;
+        KEKManager::generateAndStoreUserKeys(kek);
         std::vector<unsigned char> nonce;
 
+        KEKManager::decryptAndStoredUserKeys(kek);
 
         // auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
         encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);

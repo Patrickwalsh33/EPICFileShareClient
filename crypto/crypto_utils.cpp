@@ -199,10 +199,9 @@ std::vector<unsigned char> base64Decode(const std::string& encoded_string) {
 }
 
 // Define constants for package and user
-const std::string PACKAGE = "fileShare";
-const std::string USER = "username";  // swap for actual username
-
-keychain::Error error;
+static const std::string PACKAGE = "fileShare";
+static const std::string USER = "username";  // swap for actual username
+static keychain::Error keychainError;
 
 //storing encrypted key + nonce
 void storeEncryptedKey(
@@ -215,29 +214,29 @@ void storeEncryptedKey(
     std::string nonceB64 = base64Encode(nonce);
 
     // Store ciphertext and nonce as separate entries
-    keychain::setPassword(PACKAGE, keyName + "_ciphertext", USER, ciphertextB64, error);
-    if (error) {
-        std::cerr << "Error storing ciphertext for " << keyName << ": " << error.message << std::endl;
+    keychain::setPassword(PACKAGE, keyName + "_ciphertext", USER, ciphertextB64, keychainError);
+    if (keychainError) {
+        std::cerr << "Error storing ciphertext for " << keyName << ": " << keychainError.message << std::endl;
         return;
     }
 
-    keychain::setPassword(PACKAGE, keyName + "_nonce", USER, nonceB64, error);
-    if (error) {
-        std::cerr << "Error storing nonce for " << keyName << ": " << error.message << std::endl;
+    keychain::setPassword(PACKAGE, keyName + "_nonce", USER, nonceB64, keychainError);
+    if (keychainError) {
+        std::cerr << "Error storing nonce for " << keyName << ": " << keychainError.message << std::endl;
         return;
     }
 }
 
 KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName) {
 
-    std::string ciphertextB64 = keychain::getPassword(PACKAGE, keyName + "_ciphertext", USER, error);
-    if (error) {
-        throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + error.message);
+    std::string ciphertextB64 = keychain::getPassword(PACKAGE, keyName + "_ciphertext", USER, keychainError);
+    if (keychainError) {
+        throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + keychainError.message);
     }
 
-    std::string nonceB64 = keychain::getPassword(PACKAGE, keyName + "_nonce", USER, error);
-    if (error) {
-        throw std::runtime_error("Failed to load nonce for " + keyName + ": " + error.message);
+    std::string nonceB64 = keychain::getPassword(PACKAGE, keyName + "_nonce", USER, keychainError);
+    if (keychainError) {
+        throw std::runtime_error("Failed to load nonce for " + keyName + ": " + keychainError.message);
     }
 
     KeyEncryptor::EncryptedData encryptedData;
