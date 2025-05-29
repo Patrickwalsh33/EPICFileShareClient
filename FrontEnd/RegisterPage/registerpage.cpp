@@ -11,6 +11,7 @@
 #include "../../key_management/KeyEncryptor.h"
 #include "../../crypto/crypto_utils.h"
 #include "keychain/keychain.h"
+#include <iostream>
 
 
 
@@ -35,6 +36,36 @@ RegisterPage::~RegisterPage()
     delete passwordChecker;
     delete passwordValidator;
     delete userAuth;
+}
+
+// Define constants for package and user
+const std::string PACKAGE = "com.yourapp.keychain";
+const std::string USER = "user_identifier";  // Could be a username or device ID
+
+keychain::Error error;
+
+// Helper to store one encrypted key + nonce
+void storeEncryptedKey(
+        const std::string& keyName,
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& nonce
+) {
+    // Encode to base64
+    std::string ciphertextB64 = base64Encode(ciphertext);
+    std::string nonceB64 = base64Encode(nonce);
+
+    // Store ciphertext and nonce as separate entries
+    keychain::setPassword(PACKAGE, keyName + "_ciphertext", USER, ciphertextB64, error);
+    if (error) {
+        std::cerr << "Error storing ciphertext for " << keyName << ": " << error.message << std::endl;
+        return;
+    }
+
+    keychain::setPassword(PACKAGE, keyName + "_nonce", USER, nonceB64, error);
+    if (error) {
+        std::cerr << "Error storing nonce for " << keyName << ": " << error.message << std::endl;
+        return;
+    }
 }
 
 // Slot for handling the registerButton's clicked signal
@@ -75,6 +106,10 @@ void RegisterPage::on_registerButton_clicked()
     print_hex("Encrypted One Time Key Ciphertext: ", encryptedOneTimeKey.ciphertext.data(), encryptedOneTimeKey.ciphertext.size());
     print_hex("Encrypted One Time Key Nonce: ", encryptedOneTimeKey.nonce.data(), encryptedOneTimeKey.nonce.size());
 
+    //storing in os keychain
+    storeEncryptedKey("identityKey", encryptedIdentityKey.ciphertext, encryptedIdentityKey.nonce);
+    storeEncryptedKey("signedPreKey", encryptedSignedPreKey.ciphertext, encryptedSignedPreKey.nonce);
+    storeEncryptedKey("oneTimeKey", encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
 
 
     // Register user using the authentication service
