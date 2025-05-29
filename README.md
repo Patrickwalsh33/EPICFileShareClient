@@ -1,4 +1,7 @@
 Setup Instructions: 
+If first time cloning : git clone --recurse-submodules https://github.com/your-username/your-repo.git
+If already cloned run : git submodule update --init --recursive
+
 
 COME BACK TO THIS AND REFINE: 
 
