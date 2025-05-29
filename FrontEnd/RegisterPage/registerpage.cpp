@@ -40,7 +40,7 @@ RegisterPage::~RegisterPage()
 
 // Define constants for package and user
 const std::string PACKAGE = "fileShare";
-const std::string USER = "oisin";  // swap for actual username
+const std::string USER = "username";  // swap for actual username
 
 keychain::Error error;
 
