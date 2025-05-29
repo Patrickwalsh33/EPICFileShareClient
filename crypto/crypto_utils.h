@@ -2,6 +2,7 @@
 #include <sodium.h>
 #include <cstddef>
 #include <vector>
+#include <string>
 
 // Print binary data as a hex string with a label
 void print_hex(const char* label, const unsigned char* data, size_t len);
@@ -34,3 +35,6 @@ bool decrypt_dek(
         const unsigned char* derivedKey,
         std::vector<unsigned char>& decryptedDekOut
 );
+
+std::string base64Encode(const std::vector<unsigned char>& data);
+std::vector<unsigned char> base64Decode(const std::string& encoded);
