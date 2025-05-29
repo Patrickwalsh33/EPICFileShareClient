@@ -39,12 +39,12 @@ RegisterPage::~RegisterPage()
 }
 
 // Define constants for package and user
-const std::string PACKAGE = "com.yourapp.keychain";
-const std::string USER = "user_identifier";  // Could be a username or device ID
+const std::string PACKAGE = "fileShare";
+const std::string USER = "username";  // swap for actual username
 
 keychain::Error error;
 
-// Helper to store one encrypted key + nonce
+//storing encrypted key + nonce
 void storeEncryptedKey(
         const std::string& keyName,
         const std::vector<unsigned char>& ciphertext,
@@ -66,6 +66,26 @@ void storeEncryptedKey(
         std::cerr << "Error storing nonce for " << keyName << ": " << error.message << std::endl;
         return;
     }
+}
+
+KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName) {
+    keychain::Error error;
+
+    std::string ciphertextB64 = keychain::getPassword(PACKAGE, keyName + "_ciphertext", USER, error);
+    if (error) {
+        throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + error.message);
+    }
+
+    std::string nonceB64 = keychain::getPassword(PACKAGE, keyName + "_nonce", USER, error);
+    if (error) {
+        throw std::runtime_error("Failed to load nonce for " + keyName + ": " + error.message);
+    }
+
+    KeyEncryptor::EncryptedData encryptedData;
+    encryptedData.ciphertext = base64Decode(ciphertextB64);
+    encryptedData.nonce = base64Decode(nonceB64);
+
+    return encryptedData;
 }
 
 // Slot for handling the registerButton's clicked signal
@@ -110,6 +130,28 @@ void RegisterPage::on_registerButton_clicked()
     storeEncryptedKey("identityKey", encryptedIdentityKey.ciphertext, encryptedIdentityKey.nonce);
     storeEncryptedKey("signedPreKey", encryptedSignedPreKey.ciphertext, encryptedSignedPreKey.nonce);
     storeEncryptedKey("oneTimeKey", encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
+
+    KeyEncryptor::EncryptedData identityEncrypted = loadEncryptedKey("identityKey");
+    KeyEncryptor::EncryptedData  signedPreEncrypted = loadEncryptedKey("signedPreKey");
+    KeyEncryptor::EncryptedData  oneTimeEncrypted   = loadEncryptedKey("oneTimeKey");
+
+    auto decryptedIdentityKey = KeyEncryptor::decrypt(identityEncrypted, kek);
+    auto decryptedSignedPreKey = KeyEncryptor::decrypt(signedPreEncrypted, kek);
+    auto decryptedOneTimeKey = KeyEncryptor::decrypt(oneTimeEncrypted, kek);
+
+    print_hex("Decrypted Identity Key: ", decryptedIdentityKey.data(), decryptedIdentityKey.size());
+    print_hex("Decrypted Signed PreKey: ", decryptedSignedPreKey.data(), decryptedSignedPreKey.size());
+    print_hex("Decrypted One Time Key: ", decryptedOneTimeKey.data(), decryptedOneTimeKey.size());
+
+    bool identityMatch = decryptedIdentityKey == identityPrivateKey;
+    bool signedPreMatch = decryptedSignedPreKey == signedPreKeyPrivate;
+    bool oneTimeMatch = decryptedOneTimeKey == oneTimeKeyPrivate;
+
+    if (identityMatch && signedPreMatch && oneTimeMatch) {
+        std::cout << "Success: All decrypted keys match the original keys!" << std::endl;
+    } else {
+        std::cerr << "Failure: One or more decrypted keys do not match the originals!" << std::endl;
+    }
 
 
     // Register user using the authentication service
