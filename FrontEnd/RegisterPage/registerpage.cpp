@@ -3,8 +3,6 @@
 #include <QDebug>
 #include <QMessageBox>
 #include "../LoginPage/loginpage.h"
-#include "../../auth/validation.h"
-#include "../../auth/CommonPasswordChecker.h"
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
 #include "../../key_management/X3DHKeys/OneTimeKeyPair.h"
@@ -69,7 +67,6 @@ void storeEncryptedKey(
 }
 
 KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName) {
-    keychain::Error error;
 
     std::string ciphertextB64 = keychain::getPassword(PACKAGE, keyName + "_ciphertext", USER, error);
     if (error) {
@@ -101,19 +98,13 @@ void RegisterPage::on_registerButton_clicked()
     std::vector<unsigned char> kek = EncryptionKeyGenerator::generateKey(Encryption_KEY_SIZE);
     print_hex("KEK: ", kek.data(), kek.size());
 
-    IdentityKeyPair receiverIdentity;
-    SignedPreKeyPair receiverSignedPre(receiverIdentity.getPrivateKey());
-    OneTimeKeyPair receiverOneTime;
+    X3DHKeyBundle bundle;
 
-    auto identityPrivateKey = receiverIdentity.getPrivateKey();
-    print_hex("Identity Private Key: ", identityPrivateKey.data(), identityPrivateKey.size());
+    auto identityPrivateKey = bundle.identityKeyPair.getPrivateKey();
+    auto signedPreKeyPrivate = bundle.signedPreKeyPair.getPrivateKey();
+    auto oneTimeKeyPrivate = bundle.oneTimeKeyPair.getPrivateKey();
 
-    auto signedPreKeyPrivate = receiverSignedPre.getPrivateKey();
-    print_hex("Signed PreKey Private: ", signedPreKeyPrivate.data(), signedPreKeyPrivate.size());
-
-    auto oneTimeKeyPrivate = receiverOneTime.getPrivateKey();
-    print_hex("One Time Key Private: ", oneTimeKeyPrivate.data(), oneTimeKeyPrivate.size());
-
+    //encrypted with the kek
     auto encryptedIdentityKey = KeyEncryptor::encrypt(identityPrivateKey, kek);
     print_hex("Encrypted Identity Key Ciphertext: ", encryptedIdentityKey.ciphertext.data(), encryptedIdentityKey.ciphertext.size());
     print_hex("Encrypted Identity Key Nonce: ", encryptedIdentityKey.nonce.data(), encryptedIdentityKey.nonce.size());

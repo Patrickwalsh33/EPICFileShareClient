@@ -3,12 +3,25 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <cctype>
 
 void print_hex(const char* label, const unsigned char* data, size_t len) {
     std::cout << label;
     for (size_t i = 0; i < len; i++)
         printf("%02x", data[i]);
     std::cout << std::endl;
+}
+
+X3DHKeyBundle::X3DHKeyBundle()
+        : identityKeyPair(),
+          signedPreKeyPair(identityKeyPair.getPrivateKey()),
+          oneTimeKeyPair() {
+    print_hex("Identity Private Key: ", identityKeyPair.getPrivateKey().data(), identityKeyPair.getPrivateKey().size());
+    print_hex("Identity Public Key: ", identityKeyPair.getPublicKey().data(), identityKeyPair.getPublicKey().size());
+    print_hex("Signed PreKey Private: ", signedPreKeyPair.getPrivateKey().data(), signedPreKeyPair.getPrivateKey().size());
+    print_hex("Signed Prekey Public: ", signedPreKeyPair.getPublicKey().data(), signedPreKeyPair.getPublicKey().size());
+    print_hex("One Time Key Private: ", oneTimeKeyPair.getPrivateKey().data(), oneTimeKeyPair.getPrivateKey().size());
+    print_hex("One Time Key Public: ", oneTimeKeyPair.getPublicKey().data(), oneTimeKeyPair.getPublicKey().size());
 }
 
 bool derive_key_from_shared_secret(

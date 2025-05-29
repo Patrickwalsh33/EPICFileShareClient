@@ -1,11 +1,24 @@
 #pragma once
+
 #include <sodium.h>
 #include <cstddef>
 #include <vector>
 #include <string>
+#include "../key_management/X3DHKeys/IdentityKeyPair.h"
+#include "../key_management/X3DHKeys/SignedPreKeyPair.h"
+#include "../key_management/X3DHKeys/OneTimeKeyPair.h"
 
 // Print binary data as a hex string with a label
 void print_hex(const char* label, const unsigned char* data, size_t len);
+
+
+struct X3DHKeyBundle {
+    IdentityKeyPair identityKeyPair;
+    SignedPreKeyPair signedPreKeyPair;
+    OneTimeKeyPair oneTimeKeyPair;
+
+    X3DHKeyBundle();  // Custom constructor
+};
 
 // Derive a symmetric key from the shared secret using libsodium KDF
 bool derive_key_from_shared_secret(
