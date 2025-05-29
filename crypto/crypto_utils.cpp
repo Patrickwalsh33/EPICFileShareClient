@@ -4,6 +4,8 @@
 #include <cstring>
 #include <vector>
 #include <cctype>
+#include "keychain/keychain.h"
+
 
 void print_hex(const char* label, const unsigned char* data, size_t len) {
     std::cout << label;
@@ -196,3 +198,51 @@ std::vector<unsigned char> base64Decode(const std::string& encoded_string) {
     return ret;
 }
 
+// Define constants for package and user
+const std::string PACKAGE = "fileShare";
+const std::string USER = "username";  // swap for actual username
+
+keychain::Error error;
+
+//storing encrypted key + nonce
+void storeEncryptedKey(
+        const std::string& keyName,
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& nonce
+) {
+    // Encode to base64
+    std::string ciphertextB64 = base64Encode(ciphertext);
+    std::string nonceB64 = base64Encode(nonce);
+
+    // Store ciphertext and nonce as separate entries
+    keychain::setPassword(PACKAGE, keyName + "_ciphertext", USER, ciphertextB64, error);
+    if (error) {
+        std::cerr << "Error storing ciphertext for " << keyName << ": " << error.message << std::endl;
+        return;
+    }
+
+    keychain::setPassword(PACKAGE, keyName + "_nonce", USER, nonceB64, error);
+    if (error) {
+        std::cerr << "Error storing nonce for " << keyName << ": " << error.message << std::endl;
+        return;
+    }
+}
+
+KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName) {
+
+    std::string ciphertextB64 = keychain::getPassword(PACKAGE, keyName + "_ciphertext", USER, error);
+    if (error) {
+        throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + error.message);
+    }
+
+    std::string nonceB64 = keychain::getPassword(PACKAGE, keyName + "_nonce", USER, error);
+    if (error) {
+        throw std::runtime_error("Failed to load nonce for " + keyName + ": " + error.message);
+    }
+
+    KeyEncryptor::EncryptedData encryptedData;
+    encryptedData.ciphertext = base64Decode(ciphertextB64);
+    encryptedData.nonce = base64Decode(nonceB64);
+
+    return encryptedData;
+}

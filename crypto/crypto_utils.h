@@ -7,6 +7,8 @@
 #include "../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../key_management/X3DHKeys/SignedPreKeyPair.h"
 #include "../key_management/X3DHKeys/OneTimeKeyPair.h"
+#include "keychain/keychain.h"
+#include "../../key_management/KeyEncryptor.h"
 
 // Print binary data as a hex string with a label
 void print_hex(const char* label, const unsigned char* data, size_t len);
@@ -40,6 +42,16 @@ bool decrypt_with_chacha20(
         const unsigned char key[crypto_aead_chacha20poly1305_ietf_KEYBYTES],
         const unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES],
         unsigned char* decrypted, unsigned long long* decrypted_len);
+
+// Function to store encrypted key + nonce
+void storeEncryptedKey(
+        const std::string& keyName,
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& nonce
+);
+
+// Function to load encrypted key + nonce
+KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName);
 
 bool decrypt_dek(
         const std::vector<unsigned char>& encryptedDek,
