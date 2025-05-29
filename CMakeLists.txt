@@ -63,6 +63,8 @@ add_executable(MyQtApp
         key_management/DataEncryptionKey.cpp
         key_management/KeyEncryptor.h
         key_management/KeyEncryptor.cpp
+        FrontEnd/LoginPage/loginManager.cpp
+        FrontEnd/LoginPage/loginManager.h
 )
 
 target_include_directories(MyQtApp PRIVATE
