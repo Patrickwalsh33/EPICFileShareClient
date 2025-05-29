@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Login</string>
   </property>
   <property name="autoFillBackground">
    <bool>false</bool>
@@ -22,22 +22,23 @@
   <widget class="QLabel" name="loginPageLabel">
    <property name="geometry">
     <rect>
-     <x>100</x>
+     <x>70</x>
      <y>20</y>
-     <width>221</width>
+     <width>260</width>
      <height>81</height>
     </rect>
    </property>
    <property name="font">
     <font>
-     <pointsize>41</pointsize>
+     <pointsize>30</pointsize>
+     <bold>true</bold>
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">background-color: blue;</string>
+    <string notr="true">background-color: blue; color: white;</string>
    </property>
    <property name="text">
-    <string>Login Page</string>
+    <string>Login</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -47,35 +48,51 @@
    <property name="geometry">
     <rect>
      <x>50</x>
-     <y>200</y>
+     <y>150</y>
      <width>151</width>
      <height>41</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">background-color: white;   color: black;</string>
+    <string notr="true">background-color: white; color: black;</string>
    </property>
    <property name="text">
-    <string> Username:</string>
+    <string>Username:</string>
    </property>
   </widget>
   <widget class="QLabel" name="passwordLabel">
    <property name="geometry">
     <rect>
      <x>50</x>
-     <y>250</y>
+     <y>200</y>
      <width>141</width>
      <height>41</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">background-color: white;   color: black;</string>
+    <string notr="true">background-color: white; color: black;</string>
    </property>
    <property name="text">
-    <string>Password</string>
+    <string>Password:</string>
    </property>
   </widget>
   <widget class="QLineEdit" name="usernameLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>160</y>
+     <width>141</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: black;</string>
+   </property>
+   <property name="placeholderText">
+    <string>Enter username</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="passwordLineEdit">
    <property name="geometry">
     <rect>
      <x>210</x>
@@ -87,37 +104,24 @@
    <property name="styleSheet">
     <string notr="true">color: black;</string>
    </property>
-   <property name="placeholderText">
-    <string>Enter your username</string>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="passwordLineEdit">
-   <property name="geometry">
-    <rect>
-     <x>210</x>
-     <y>260</y>
-     <width>141</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: black;</string>
+   <property name="echoMode">
+    <enum>QLineEdit::Password</enum>
    </property>
    <property name="placeholderText">
-    <string>Enter your password</string>
+    <string>Enter password</string>
    </property>
   </widget>
   <widget class="QPushButton" name="loginButton">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>300</y>
+     <x>130</x>
+     <y>270</y>
      <width>141</width>
      <height>32</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: black; background: blue;</string>
+    <string notr="true">color: white; background-color: blue;</string>
    </property>
    <property name="text">
     <string>Login</string>
@@ -126,17 +130,17 @@
   <widget class="QPushButton" name="goToRegistationButton">
    <property name="geometry">
     <rect>
-     <x>269</x>
-     <y>360</y>
-     <width>121</width>
+     <x>130</x>
+     <y>320</y>
+     <width>141</width>
      <height>32</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: black;</string>
+    <string notr="true">color: black; background-color: lightgray;</string>
    </property>
    <property name="text">
-    <string>create account</string>
+    <string>Create Account</string>
    </property>
   </widget>
   <widget class="QLabel" name="errorLabel">
@@ -144,12 +148,12 @@
     <rect>
      <x>30</x>
      <y>370</y>
-     <width>131</width>
+     <width>341</width>
      <height>16</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: black;</string>
+    <string notr="true">color: red;</string>
    </property>
    <property name="text">
     <string>Error message here</string>
