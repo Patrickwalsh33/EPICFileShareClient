@@ -35,30 +35,28 @@ std::vector<unsigned char> KEKManager::encryptKEK(
 }
 
 std::vector<unsigned char> KEKManager::decryptKEK(
-
-    const std::vector<unsigned char>& masterKey,
-    const std::vector<unsigned char>& encryptedKEK,
-    std::vector<unsigned char>& nonce){
+        const std::vector<unsigned char>& masterKey,
+        const std::vector<unsigned char>& encryptedKEK,
+        const std::vector<unsigned char>& nonce) {
 
     if (masterKey.size() != crypto_aead_chacha20poly1305_ietf_KEYBYTES) {
         throw std::runtime_error("Invalid master key size");
     }
 
-    nonce.resize(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
-    randombytes_buf(nonce.data(), nonce.size());
-
     std::vector<unsigned char> decryptedKEK(encryptedKEK.size() - crypto_aead_chacha20poly1305_ietf_ABYTES);
     unsigned long long decryptedKEK_len;
+
     if (crypto_aead_chacha20poly1305_ietf_decrypt(
-        decryptedKEK.data(), &decryptedKEK_len,
-        nullptr,
-        encryptedKEK.data(), encryptedKEK.size(),
-        nullptr, 0,
-        nonce.data(),
-        masterKey.data()) != 0)
+            decryptedKEK.data(), &decryptedKEK_len,
+            nullptr,
+            encryptedKEK.data(), encryptedKEK.size(),
+            nullptr, 0,
+            nonce.data(),
+            masterKey.data()) != 0)
     {
         throw std::runtime_error("Invalid encryption key");
     }
+
     decryptedKEK.resize(decryptedKEK_len);
     return decryptedKEK;
 }

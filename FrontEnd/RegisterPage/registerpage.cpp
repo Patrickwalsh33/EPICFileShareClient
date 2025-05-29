@@ -46,17 +46,6 @@ void RegisterPage::on_registerButton_clicked()
     QString confirmPassword = ui->confirmPasswordLineEdit->text();
     QString errorMessage;
 
-//    bool identityMatch = decryptedIdentityKey == identityPrivateKey;
-//    bool signedPreMatch = decryptedSignedPreKey == signedPreKeyPrivate;
-//    bool oneTimeMatch = decryptedOneTimeKey == oneTimeKeyPrivate;
-//
-//    if (identityMatch && signedPreMatch && oneTimeMatch) {
-//        std::cout << "Success: All decrypted keys match the original keys!" << std::endl;
-//    } else {
-//        std::cerr << "Failure: One or more decrypted keys do not match the originals!" << std::endl;
-//    }
-
-
     // Register user using the authentication service
     if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
