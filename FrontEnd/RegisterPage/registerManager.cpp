@@ -11,10 +11,12 @@
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
 #include "../../key_management/X3DHKeys/OneTimeKeyPair.h"
+#include "../../key_management/EncryptionKeyGenerator.h"
+#include "../../key_management/KeyEncryptor.h"
 
 RegisterManager::RegisterManager(QObject *parent) : QObject(parent),
-                                                    networkManager(new QNetworkAccessManager(this)),
-                                                    currentReply(nullptr)
+networkManager(new QNetworkAccessManager(this)),
+currentReply(nullptr)
 {
     if (!QSslSocket::supportsSsl()) {
         qWarning() << "SSL is not supported on this system";
@@ -49,17 +51,33 @@ bool RegisterManager::registerUser(const QString &username, int numOneTimeKeys) 
 
     try {
         // Generate X3DH keys for the user
+        std::vector<unsigned char> kek = EncryptionKeyGenerator::generateKey(Encryption_KEY_SIZE);
+        //print_hex("KEK: ", kek.data(), kek.size());
+
         IdentityKeyPair identityKeys;
         SignedPreKeyPair signedPreKeys(identityKeys.getPrivateKey());
+
+        // Get private keys for encryption
+        auto identityPrivateKey = identityKeys.getPrivateKey();
+        auto signedPreKeyPrivate = signedPreKeys.getPrivateKey();
+
+        // Encrypt private keys with KEK
+        auto encryptedIdentityKey = KeyEncryptor::encrypt(identityPrivateKey, kek);
+        auto encryptedSignedPreKey = KeyEncryptor::encrypt(signedPreKeyPrivate, kek);
+
 
         QJsonArray oneTimeKeysArray;
         for (int i = 0; i< numOneTimeKeys; i++) {
             OneTimeKeyPair oneTimeKey;
-            const auto& keyData = oneTimeKey.getPublicKey();
-            QByteArray keyBytes(reinterpret_cast<const char*>(keyData.data()), keyData.size());
+            const auto &keyData = oneTimeKey.getPublicKey();
+            QByteArray keyBytes(reinterpret_cast<const char *>(keyData.data()), keyData.size());
             QString base64Key = QString::fromLatin1(keyBytes.toBase64());
-
             oneTimeKeysArray.append(base64Key);
+
+            auto oneTimeKeyPrivate = oneTimeKey.getPrivateKey();
+            auto encryptedOneTimeKey = KeyEncryptor::encrypt(oneTimeKeyPrivate, kek);
+
+            //TODO Store the encrypted private keys locally
         }
 
         // Create JSON payload
