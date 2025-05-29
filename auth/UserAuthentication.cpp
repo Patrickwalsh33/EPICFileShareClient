@@ -4,6 +4,11 @@
 #include <sodium.h>
 #include <vector>
 
+
+static std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES);
+static std::vector<unsigned char> encryptedKEK;
+static std::vector<unsigned char> nonce;
+
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
     : validator(validator),
 masterKeyDerivation(new MasterKeyDerivation()),
@@ -25,7 +30,7 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
     try
     {
-        std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES); // 16 byte salt
+      //  std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES); // 16 byte salt
         randombytes_buf(salt.data(), salt.size());
 
         std::vector<unsigned char> masterKey = masterKeyDerivation->deriveMaster(password, salt); //Uses Argon2id
@@ -35,7 +40,9 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
         qDebug() << "kek:" << kek;
         std::vector<unsigned char> nonce;
 
-        auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
+
+        // auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
+        encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
 
         qDebug() << "MasterKey Derived Successfully:" << masterKey;
         qDebug() << "User registration successful for:" << username;
@@ -52,16 +59,59 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
 
 
-bool UserAuthentication::loginUser(const QString& username, const QString& password, QString& errorMsg) {
-   
+bool UserAuthentication::loginUser(const QString& username, const QString& qpassword, QString& errorMsg) {
+    std::vector<unsigned char> masterKey;
+    std::vector<unsigned char> decryptedKEK;
 
 
-    // For now, return success if username and password are not empty
-    if(username.isEmpty() || password.isEmpty()) {
-        errorMsg = "Username and password cannot be empty";
+    //for testing purposes
+
+
+    //validates username
+    if (!validator->validateUsername(username, errorMsg)) {
         return false;
     }
-    
+
+
+
+    std::string password = qpassword.toStdString();
+    qDebug() << password << "LINE 89";
+
+
+
+    //GETS MASTERKEY
+    try {
+        //gets masterkey from password by passing it and the salt into argon2
+        masterKey = masterKeyDerivation->deriveMaster(password, salt); //Uses Argon2id
+        qDebug() << masterKey;
+
+
+    } catch (const std::exception& e) {
+        errorMsg = QString("Login failed during key derivation: %1").arg(e.what());
+        qDebug() << "Exception during masterKey derivation in login:" ;
+        return false;
+    }
+
+
+
+    //GETS DECRYPTED KEY ENCYPTION KEY
+    try{
+        decryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, nonce);
+        qDebug() << "inside here";
+        qDebug() << decryptedKEK << "Line 113";
+        qDebug() << "inside here";
+
+    } catch (const std::exception& e) {
+        qDebug() << "error decrypting kek Line 117" << e.what();
+    }
+
+
+
+    qDebug() << encryptedKEK << "LINE 122";
+
+
+
+
     qDebug() << "Login attempt for user:" << username;
     
     // TODO: Check credentials against database
