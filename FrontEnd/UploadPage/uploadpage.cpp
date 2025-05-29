@@ -6,12 +6,16 @@
 #include <QFile>
 #include <QDebug>
 #include "../../crypto/crypto_utils.h"
+#include "../../X3DH/X3DH.h"
+#include <iostream>
 
 UploadPage::UploadPage(QWidget *parent) :
         QDialog(parent),
         ui(new Ui::UploadPage),
         uploader(new uploadManager(this)),
-        selectedFileIndex(static_cast<size_t>(-1)) {  // Initialize with invalid index
+        //sets initial selected file index to invalid value so that its clear
+        //no file is selected at the start
+        selectedFileIndex(static_cast<size_t>(-1)) {
     ui->setupUi(this);
 
     // Replace the standard buttons with HoverButton
@@ -189,20 +193,79 @@ void UploadPage::on_encryptButton_clicked() {
     auto& selectedFile = files[selectedFileIndex];
     unsigned long long ciphertext_len;
     std::vector<unsigned char> ciphertext(selectedFile.originalData.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
-    std::vector<unsigned char> nonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
+    std::vector<unsigned char> fileNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
 
+
+    //encrypt the file data with the dek
     encrypt_with_chacha20(
             reinterpret_cast<const unsigned char*>(selectedFile.originalData.constData()),
             selectedFile.originalData.size(),
             selectedFile.dek.data(),
             ciphertext.data(),
             &ciphertext_len,
-            nonce.data()
+            fileNonce.data()
     );
 
+
+    unsigned char sharedSecret[crypto_generichash_BYTES]; // 32 bytes
+    bool success = run_x3dh(sharedSecret, sizeof(sharedSecret));
+
+    unsigned char derivedKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES]; // 32 bytes
+    const char context[8] = "X3DHKEY";
+    uint64_t subkey_id = 1;
+
+    bool derived = derive_key_from_shared_secret(
+            sharedSecret,
+            derivedKey,
+            context,
+            subkey_id
+    );
+
+    if (!derived) {
+        QMessageBox::critical(this, "Key Derivation Error", "Failed to derive key from shared secret.");
+        return;
+    }
+
+// Encrypt the DEK using the derived key
+    std::vector<unsigned char> dekNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
+    randombytes_buf(dekNonce.data(), dekNonce.size());
+
+    std::vector<unsigned char> encryptedDek(selectedFile.dek.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
+    unsigned long long encryptedDekLen = 0;
+
+    if (crypto_aead_chacha20poly1305_ietf_encrypt(
+            encryptedDek.data(), &encryptedDekLen,
+            selectedFile.dek.data(), selectedFile.dek.size(),
+            nullptr, 0,  // no associated data
+            nullptr,
+            dekNonce.data(),
+            derivedKey
+    ) != 0) {
+        QMessageBox::critical(this, "Encryption Error", "Failed to encrypt DEK with derived key.");
+        return;
+    }
+    std::cout << "[X3DH] DEK was successfully encrypted using the derived key." << std::endl;
+
+    // testing decryption
+    std::vector<unsigned char> decryptedDek;
+    bool decrypted = decrypt_dek(encryptedDek, encryptedDekLen, dekNonce, derivedKey, decryptedDek);
+
+    if (decrypted) {
+        if (decryptedDek == std::vector<unsigned char>(selectedFile.dek.begin(), selectedFile.dek.end())) {
+            std::cout << "[X3DH] Decrypted DEK matches original DEK." << std::endl;
+        } else {
+            std::cerr << "[X3DH] Decrypted DEK does NOT match original DEK!" << std::endl;
+        }
+    } else {
+        QMessageBox::critical(this, "Decryption Error", "Failed to decrypt the encrypted DEK.");
+    }
+
+
+
     selectedFile.encryptedData = QByteArray(reinterpret_cast<const char*>(ciphertext.data()), ciphertext_len);
-    selectedFile.encryptionNonce = QByteArray(reinterpret_cast<const char*>(nonce.data()), nonce.size());
-    selectedFile.encryptedDek = QByteArray(reinterpret_cast<const char*>(selectedFile.dek.data()), selectedFile.dek.size());
+    selectedFile.encryptedFileNonce = QByteArray(reinterpret_cast<const char*>(fileNonce.data()), fileNonce.size());
+    selectedFile.encryptedDek = QByteArray(reinterpret_cast<const char*>(encryptedDek.data()), encryptedDekLen);
+    selectedFile.encryptedDekNonce = QByteArray(reinterpret_cast<const char*>(dekNonce.data()), dekNonce.size());
     selectedFile.isEncrypted = true;
 
     selectedFile.statusLabel->setText("Status: Encrypted and ready for upload");
