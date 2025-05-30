@@ -4,12 +4,7 @@
 #include <QMessageBox>
 #include "../LoginPage/loginpage.h"
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
-#include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
-#include "../../key_management/X3DHKeys/OneTimeKeyPair.h"
-#include "../../key_management/KeyEncryptor.h"
-#include "../../crypto/crypto_utils.h"
-#include "keychain/keychain.h"
-#include <iostream>
+
 
 
 
