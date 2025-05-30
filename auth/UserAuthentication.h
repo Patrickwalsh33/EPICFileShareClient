@@ -12,7 +12,7 @@ public:
     ~UserAuthentication();
     
     // Register a new user
-    bool registerUser(const QString& username, const QString&  qpassword, const QString& confirmPassword, QString& errorMsg);
+    bool registerUserLocally(const QString& username, const QString&  qpassword, const QString& confirmPassword, QString& errorMsg);
     
     // Login a user
     bool loginUser(const QString& username, const QString& password, QString& errorMsg);

@@ -16,7 +16,7 @@ public:
     ~RegisterManager();
 
     void setServerUrl(const QString &url);
-    bool registerUser(const QString &username, int numOneTimeKeys = DEFAULT_ONETIME_KEYS);
+    bool registerUserWithManager(const QString &username, int numOneTimeKeys = DEFAULT_ONETIME_KEYS);
 
 signals:
     void registrationSucceeded();

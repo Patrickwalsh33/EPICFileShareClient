@@ -51,7 +51,7 @@ void RegisterPage::on_registerButton_clicked()
     QString errorMessage;
 
     // Register user using the authentication service
-    if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
+    if (!userAuth->registerUserLocally(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
         ui->errorLabel->setStyleSheet("color: red");
         return;
@@ -61,7 +61,7 @@ void RegisterPage::on_registerButton_clicked()
     ui->errorLabel->setStyleSheet("color: blue");
     ui->registerButton->setEnabled(false);
 
-    if (!registerManager->registerUser(username)) {
+    if (!registerManager->registerUserWithManager(username)) {
         ui->errorLabel->setText("Failed to start server registration");
         ui->errorLabel->setStyleSheet("color: red");
         ui->registerButton->setEnabled(true);
@@ -112,4 +112,4 @@ void RegisterPage::on_backToLoginButton_clicked()
     this->accept(); // Close RegisterPage
     
     loginDialog.exec(); // Show LoginPage modally
-} 
+}

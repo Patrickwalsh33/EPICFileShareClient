@@ -41,7 +41,8 @@ void LoginPage::on_loginButton_clicked(){
     if (loginState){
         qDebug()<< "Login Successful";
         UploadPage registerDialog(nullptr);
-        
+
+        //TODO: This is only authenticating locally
         registerDialog.setAttribute(Qt::WA_DeleteOnClose);
         this->accept(); 
         registerDialog.exec(); 

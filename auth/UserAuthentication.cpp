@@ -16,7 +16,7 @@ masterKeyDerivation(new MasterKeyDerivation()),
 kekManager(new KEKManager()) {
 }
 
-bool UserAuthentication::registerUser(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
+bool UserAuthentication::registerUserLocally(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
     std::vector<unsigned char> originalDecryptedKEK;
     // Validate username
     if (!validator->validateUsername(username, errorMsg)) {
@@ -78,11 +78,8 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         return false;
     }
 
-
-
     std::string password = qpassword.toStdString();
     qDebug() << password << "LINE 89";
-
 
 
     //GETS MASTERKEY
@@ -98,8 +95,6 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         return false;
     }
 
-
-
     //GETS DECRYPTED KEY ENCYPTION KEY
     try{
         decryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
@@ -111,12 +106,7 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     }
 
 
-
     qDebug() << encryptedKEK << "LINE 122";
-
-
-
-
     qDebug() << "Login attempt for user:" << username;
     
     // TODO: Check credentials against database

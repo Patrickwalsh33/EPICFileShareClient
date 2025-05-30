@@ -35,7 +35,7 @@ void RegisterManager::setServerUrl(const QString &url) {
     serverUrl = url;
 }
 
-bool RegisterManager::registerUser(const QString &username, int numOneTimeKeys) {
+bool RegisterManager::registerUserWithManager(const QString &username, int numOneTimeKeys) {
     qDebug() << "Registering user with server:" << username;
     qDebug() << "Generating" << numOneTimeKeys << "one-time keys";
 
