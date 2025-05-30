@@ -11,7 +11,6 @@ public:
     static std::vector<unsigned char> decryptKEK(const std::vector<unsigned char>& masterKey, const std::vector<unsigned char>& kek, const std::vector<unsigned char>& nonce);
     static void generateAndStoreUserKeys(const std::vector<unsigned char>& kek);
     static void decryptStoredUserKeys(const std::vector<unsigned char>& kek);
-    static void storeUserKeys(const std::vector<unsigned char>& kek);
-    static std::vector<unsigned char> retrievePrivateIdentityKey(const std::vector<unsigned char>& kek);
+
 
 };
