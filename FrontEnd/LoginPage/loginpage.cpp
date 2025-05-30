@@ -3,6 +3,7 @@
 #include <QDebug>
 #include "../HomePage/homepage.h"
 #include "../../auth/UserAuthentication.h"
+#include "../ProfilePage/profilepage.h"
 
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
@@ -60,4 +61,22 @@ void LoginPage::on_loginButton_clicked(){
 void LoginPage::on_goToRegistationButton_clicked()
 {
     qDebug() << "goToRegistationButton_clicked from LoginPage";
+}
+
+void LoginPage::on_goToProfileButton_clicked()
+{
+    qDebug() << "goToProfileButton_clicked from LoginPage";
+    
+    // Get the current username from the login field
+    QString username = ui->usernameLineEdit->text();
+    
+    if (username.isEmpty()) {
+        ui->errorLabel->setText("Please enter a username first");
+        return;
+    }
+    
+    // Create and show the profile page
+    ProfilePage *profilePage = new ProfilePage(username, this);
+    profilePage->setAttribute(Qt::WA_DeleteOnClose);
+    profilePage->exec();
 }
