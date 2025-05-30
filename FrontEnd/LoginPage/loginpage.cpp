@@ -1,7 +1,7 @@
 #include "loginpage.h"
 #include "ui_loginpage.h"
 #include <QDebug>
-#include "../UploadPage/uploadpage.h"
+#include "../HomePage/homepage.h"
 #include "../../auth/UserAuthentication.h"
 
 
@@ -23,22 +23,19 @@ LoginPage::~LoginPage()
 void LoginPage::on_loginButton_clicked(){
 
     qDebug() << "loginButton_clicked";
-    qDebug() << "navigating to UploadPage";
 
     QString username = ui->usernameLineEdit->text();
     QString password = ui->passwordLineEdit->text();
 
-    qDebug() << username;
-    qDebug() << password;
+    qDebug() << "Attempting login for user:" << username;
 
     UserAuthentication auth(nullptr);
     QString errorMsg;
     bool loginState = auth.loginUser(username, password, errorMsg);
     
-    UploadPage registerDialog(nullptr); 
-
 
     if (loginState){
+
         qDebug()<< "Login Successful";
         UploadPage registerDialog(nullptr);
 
@@ -47,13 +44,19 @@ void LoginPage::on_loginButton_clicked(){
         this->accept(); 
         registerDialog.exec(); 
 
+  /*
+        qDebug()<< "Login Successful for user:" << username;
+
+        this->accept();
+        HomePage *homePage = new HomePage(username, nullptr);
+        homePage->setAttribute(Qt::WA_DeleteOnClose);
+        homePage->exec();
+        */
+
+
     }else{
-        qDebug() << "login failed" << errorMsg;
+        qDebug() << "Login failed for user:" << username << "Error:" << errorMsg;
     }
-
-
-
-
 
 }
 
@@ -68,5 +71,5 @@ void LoginPage::on_loginButton_clicked(){
 // Slot for handling the goToRegistationButton's clicked signal.
 void LoginPage::on_goToRegistationButton_clicked()
 {
-    qDebug() << "goToRegistationButton_clicked";
+    qDebug() << "goToRegistationButton_clicked from LoginPage";
 }

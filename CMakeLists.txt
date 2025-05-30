@@ -24,8 +24,12 @@ add_executable(MyQtApp
         main.cpp
         FrontEnd/LoginPage/loginpage.cpp
         FrontEnd/LoginPage/loginpage.ui
-        FrontEnd/HomePage/home.cpp
-        FrontEnd/HomePage/home.ui
+        FrontEnd/LandingPage/landingpage.cpp
+        FrontEnd/LandingPage/landingpage.ui
+        FrontEnd/ProfilePage/ProfilePage.cpp
+        FrontEnd/ProfilePage/ProfilePage.ui
+        FrontEnd/HomePage/homepage.cpp
+        FrontEnd/HomePage/homepage.ui
         X3DH/X3DH.h
         X3DH/X3DH.cpp
         FrontEnd/RegisterPage/registerpage.cpp
