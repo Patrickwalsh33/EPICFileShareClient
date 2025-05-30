@@ -1,6 +1,6 @@
 #pragma once
 #include <QDialog>
-#include "loginManager.h"
+#include "../../auth/UserAuthentication.h"
 
 namespace Ui {
 class LoginPage;
@@ -26,7 +26,7 @@ private slots:
 
 private:
     Ui::LoginPage *ui; // Pointer to the auto-generated UI class from loginpage.ui.
-    LoginManager *loginManager;
+    UserAuthentication userauthentication;
     QByteArray currentNonce; // Store the received nonce for signing
     QString currentUsername;
 };
