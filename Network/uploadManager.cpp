@@ -90,3 +90,82 @@ void uploadManager::handleNetworkError(QNetworkReply::NetworkError error)
     qDebug() << "Network error occurred:" << errorString;
     emit uploadFailed(errorString);
 }
+
+bool uploadManager::encryptFileWithDEK(const QByteArray &plainData, std::vector<unsigned char> &dek,
+                                       QByteArray &ciphertext, QByteArray &nonce) {
+    unsigned long long ciphertext_len;
+    std::vector<unsigned char> cipherBuf(plainData.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
+    std::vector<unsigned char> nonceBuf(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
+    randombytes_buf(nonceBuf.data(), nonceBuf.size());
+
+    encrypt_with_chacha20(
+            reinterpret_cast<const unsigned char*>(plainData.constData()),
+            plainData.size(),
+            reinterpret_cast<const unsigned char*>(dek.data()),
+            cipherBuf.data(),
+            &ciphertext_len,
+            nonceBuf.data()
+    );
+
+    ciphertext = QByteArray(reinterpret_cast<const char*>(cipherBuf.data()), ciphertext_len);
+    nonce = QByteArray(reinterpret_cast<const char*>(nonceBuf.data()), nonceBuf.size());
+    return true;
+}
+
+bool uploadManager::getSharedSecret(unsigned char *sharedSecret, size_t length) {
+    return run_x3dh(sharedSecret, length);
+}
+
+bool uploadManager::deriveKeyFromSharedSecret(const unsigned char *sharedSecret,
+                                              unsigned char *derivedKey,
+                                              const char *context,
+                                              uint64_t subkeyId) {
+    return derive_key_from_shared_secret(sharedSecret, derivedKey, context, subkeyId);
+}
+
+bool uploadManager::encryptDEK(std::vector<unsigned char> &dek,
+                               const unsigned char *derivedKey,
+                               QByteArray &encryptedDek,
+                               QByteArray &dekNonce) {
+    std::vector<unsigned char> nonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
+    randombytes_buf(nonce.data(), nonce.size());
+
+    std::vector<unsigned char> encrypted(dek.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
+    unsigned long long encLen = 0;
+
+    if (crypto_aead_chacha20poly1305_ietf_encrypt(
+            encrypted.data(), &encLen,
+            reinterpret_cast<const unsigned char*>(dek.data()), dek.size(),
+            nullptr, 0,
+            nullptr,
+            nonce.data(),
+            derivedKey) != 0) {
+        return false;
+    }
+
+    encryptedDek = QByteArray(reinterpret_cast<const char*>(encrypted.data()), encLen);
+    dekNonce = QByteArray(reinterpret_cast<const char*>(nonce.data()), nonce.size());
+    return true;
+}
+
+bool uploadManager::decryptDEK(const QByteArray &encryptedDek, size_t encryptedDekLen,
+                               const QByteArray &dekNonce,
+                               const unsigned char *derivedKey,
+                               QByteArray &decryptedDek) {
+    std::vector<unsigned char> decrypted(encryptedDekLen);
+    unsigned long long decLen = 0;
+
+    if (crypto_aead_chacha20poly1305_ietf_decrypt(
+            decrypted.data(), &decLen,
+            nullptr,
+            reinterpret_cast<const unsigned char*>(encryptedDek.constData()), encryptedDekLen,
+            nullptr, 0,
+            reinterpret_cast<const unsigned char*>(dekNonce.constData()),
+            derivedKey) != 0) {
+        return false;
+    }
+
+    decryptedDek = QByteArray(reinterpret_cast<const char*>(decrypted.data()), decLen);
+    return true;
+}
+
