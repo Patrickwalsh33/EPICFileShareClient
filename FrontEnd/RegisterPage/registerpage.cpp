@@ -22,7 +22,7 @@ RegisterPage::RegisterPage(QWidget *parent) :
     userAuth = new UserAuthentication(passwordValidator);
 
     registerManager = new RegisterManager(this);
-    registerManager ->setServerUrl("https://leftovers.gobbler.info:3333");
+    registerManager ->setServerUrl("https://leftovers.gobbler.info");
 
     connect(registerManager, &RegisterManager::registrationSucceeded,
             this, &RegisterPage::onServerRegistrationSucceeded);
