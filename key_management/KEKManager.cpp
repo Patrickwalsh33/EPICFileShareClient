@@ -61,7 +61,7 @@ std::vector<unsigned char> KEKManager::decryptKEK(
     return decryptedKEK;
 }
 
-void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek) {
+void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek, int numOneTimeKeys) {
     X3DHKeyBundle bundle;
 
     auto identityPrivateKey = bundle.identityKeyPair.getPrivateKey();
@@ -76,27 +76,48 @@ void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek)
     print_hex("Encrypted Signed PreKey Ciphertext: ", encryptedSignedPreKey.ciphertext.data(), encryptedSignedPreKey.ciphertext.size());
     print_hex("Encrypted Signed PreKey Nonce: ", encryptedSignedPreKey.nonce.data(), encryptedSignedPreKey.nonce.size());
 
-    auto encryptedOneTimeKey = KeyEncryptor::encrypt(oneTimeKeyPrivate, kek);
-    print_hex("Encrypted One Time Key Ciphertext: ", encryptedOneTimeKey.ciphertext.data(), encryptedOneTimeKey.ciphertext.size());
-    print_hex("Encrypted One Time Key Nonce: ", encryptedOneTimeKey.nonce.data(), encryptedOneTimeKey.nonce.size());
-
+    //storing the encrypted keys
     storeEncryptedKey("identityKey", encryptedIdentityKey.ciphertext, encryptedIdentityKey.nonce);
     storeEncryptedKey("signedPreKey", encryptedSignedPreKey.ciphertext, encryptedSignedPreKey.nonce);
-    storeEncryptedKey("oneTimeKey", encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
+    for (int i = 0; i < numOneTimeKeys; i++) {
+        OneTimeKeyPair oneTimeKey;
+        auto oneTimeKeyPrivate = oneTimeKey.getPrivateKey();
+
+        auto encryptedOneTimeKey = KeyEncryptor::encrypt(oneTimeKeyPrivate, kek);
+        print_hex("Encrypted One Time Key Ciphertext: ", encryptedOneTimeKey.ciphertext.data(),
+                  encryptedOneTimeKey.ciphertext.size());
+        print_hex("Encrypted One Time Key Nonce: ", encryptedOneTimeKey.nonce.data(), encryptedOneTimeKey.nonce.size());
+
+
+        std::string keyName = "oneTimeKey_" + std::to_string(i);
+        storeEncryptedKey(keyName, encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
+    }
 }
 
-void KEKManager::decryptStoredUserKeys(const std::vector<unsigned char>& kek) {
+DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned char>& kek) {
     KeyEncryptor::EncryptedData identityEncrypted = loadEncryptedKey("identityKey");
     KeyEncryptor::EncryptedData signedPreEncrypted = loadEncryptedKey("signedPreKey");
-    KeyEncryptor::EncryptedData oneTimeEncrypted = loadEncryptedKey("oneTimeKey");
 
     auto decryptedIdentityKey = KeyEncryptor::decrypt(identityEncrypted, kek);
     auto decryptedSignedPreKey = KeyEncryptor::decrypt(signedPreEncrypted, kek);
-    auto decryptedOneTimeKey = KeyEncryptor::decrypt(oneTimeEncrypted, kek);
 
     print_hex("Decrypted Identity Key: ", decryptedIdentityKey.data(), decryptedIdentityKey.size());
     print_hex("Decrypted Signed PreKey: ", decryptedSignedPreKey.data(), decryptedSignedPreKey.size());
-    print_hex("Decrypted One Time Key: ", decryptedOneTimeKey.data(), decryptedOneTimeKey.size());
+
+    DecryptedKeyData decryptedKeys;
+    decryptedKeys.identityPrivateKey = decryptedIdentityKey;
+    decryptedKeys.signedPreKeyPrivate = decryptedSignedPreKey;
+
+    //decrypt the one-time keys separately
+    for (int i = 0; i < DEFAULT_ONETIME_KEYS; i++) {
+        std::string keyName = "oneTimeKey_" + std::to_string(i);
+        KeyEncryptor::EncryptedData oneTimeEncrypted = loadEncryptedKey(keyName);
+        auto decryptedOneTimeKey = KeyEncryptor::decrypt(oneTimeEncrypted, kek);
+
+        print_hex("Decrypted One Time Key: ", decryptedOneTimeKey.data(), decryptedOneTimeKey.size());
+        decryptedKeys.oneTimeKeyPrivates.push_back(decryptedOneTimeKey);
+    }
+    return decryptedKeys;
 }
 
 
