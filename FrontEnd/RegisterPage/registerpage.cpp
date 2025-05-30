@@ -43,7 +43,7 @@ void RegisterPage::on_registerButton_clicked()
     QString errorMessage;
 
     // Register user using the authentication service
-    if (!userAuth->registerUserLocally(username, password, confirmPassword, errorMessage)) {
+    if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
         ui->errorLabel->setStyleSheet("color: red");
         return;
