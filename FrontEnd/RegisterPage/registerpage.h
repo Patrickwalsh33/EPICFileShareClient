@@ -1,5 +1,4 @@
-#ifndef REGISTERPAGE_H
-#define REGISTERPAGE_H
+#pragma once
 
 #include <QDialog>
 #include "../../auth/UserAuthentication.h"
@@ -33,5 +32,3 @@ private:
 
     int failed;
 };
-
-#endif 

@@ -3,11 +3,12 @@
 #include <sodium/crypto_aead_chacha20poly1305.h>
 #include <sodium.h>
 #include <vector>
+#include "../key_management/KEKManager.h"
 
 
-static std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES);
+static std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
 static std::vector<unsigned char> encryptedKEK;
-static std::vector<unsigned char> nonce;
+static std::vector<unsigned char> kekNonce;
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
     : validator(validator),
@@ -16,6 +17,7 @@ kekManager(new KEKManager()) {
 }
 
 bool UserAuthentication::registerUser(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
+    std::vector<unsigned char> originalDecryptedKEK;
     // Validate username
     if (!validator->validateUsername(username, errorMsg)) {
         return false;
@@ -31,22 +33,26 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
     try
     {
       //  std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES); // 16 byte salt
-        randombytes_buf(salt.data(), salt.size());
+        randombytes_buf(masterKeySalt.data(), masterKeySalt.size());
 
-        std::vector<unsigned char> masterKey = masterKeyDerivation->deriveMaster(password, salt); //Uses Argon2id
+        std::vector<unsigned char> masterKey = masterKeyDerivation->deriveMaster(password, masterKeySalt); //Uses Argon2id
 
         auto kek = EncryptionKeyGenerator::generateKey(32); //Generates the KEK
 
         qDebug() << "kek:" << kek;
-        std::vector<unsigned char> nonce;
+        KEKManager::generateAndStoreUserKeys(kek);
 
+        KEKManager::decryptStoredUserKeys(kek);
 
-        // auto encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
-        encryptedKEK = kekManager->encryptKEK(masterKey, kek, nonce);
+        encryptedKEK = kekManager->encryptKEK(masterKey, kek, kekNonce);
 
         qDebug() << "MasterKey Derived Successfully:" << masterKey;
         qDebug() << "User registration successful for:" << username;
-        qDebug() << "ENKEK is created: " << encryptedKEK;
+        qDebug() << "EN_KEK is created: " << encryptedKEK;
+        qDebug() << "KEK Nonce used: " << kekNonce;
+
+        originalDecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
+        qDebug()<< "Decrypted KEK on register: " << originalDecryptedKEK;
 
 
     } catch (const std::exception& e) {
@@ -82,8 +88,8 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     //GETS MASTERKEY
     try {
         //gets masterkey from password by passing it and the salt into argon2
-        masterKey = masterKeyDerivation->deriveMaster(password, salt); //Uses Argon2id
-        qDebug() << masterKey;
+        masterKey = masterKeyDerivation->deriveMaster(password, masterKeySalt); //Uses Argon2id
+        qDebug() << "Master Key on login: " << masterKey;
 
 
     } catch (const std::exception& e) {
@@ -96,13 +102,12 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
 
     //GETS DECRYPTED KEY ENCYPTION KEY
     try{
-        decryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, nonce);
-        qDebug() << "inside here";
-        qDebug() << decryptedKEK << "Line 113";
-        qDebug() << "inside here";
+        decryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
+        qDebug()<< "Decrypted KEK on login: " << decryptedKEK;
 
     } catch (const std::exception& e) {
         qDebug() << "error decrypting kek Line 117" << e.what();
+        return false;
     }
 
 
