@@ -28,7 +28,7 @@ masterKeyDerivation(new MasterKeyDerivation()),
 kekManager(new KEKManager()) {
 }
 
-bool UserAuthentication::registerUserLocally(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
+bool UserAuthentication::registerUser(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
     std::vector<unsigned char> originalDecryptedKEK;
 
     // Validate username
