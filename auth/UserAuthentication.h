@@ -13,7 +13,7 @@ public:
     static constexpr int DEFAULT_ONETIME_KEYS = 10;
     
     // Register a new user
-    bool registerUserLocally(const QString& username, const QString&  qpassword, const QString& confirmPassword, QString& errorMsg);
+    bool registerUser(const QString& username, const QString&  qpassword, const QString& confirmPassword, QString& errorMsg);
     
     // Login a user
     bool loginUser(const QString& username, const QString& password, QString& errorMsg);
