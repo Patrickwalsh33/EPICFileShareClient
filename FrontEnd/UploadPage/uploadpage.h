@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../key_management/DataEncryptionKey.h"
-#include "uploadManager.h"
+#include "../../Network/uploadManager.h"
 #include <QDialog>
 #include <QString>
 #include <QByteArray>
