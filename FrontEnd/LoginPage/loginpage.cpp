@@ -50,20 +50,31 @@ void LoginPage::on_loginButton_clicked(){
     qDebug() << "Attempting login for user:" << username;
 
     QString errorMsg;
-    // Use the member variable 'userauthentication' to initiate the login process
-    bool loginProcessInitiated = userauthentication.loginUser(username, password, errorMsg);
+    bool loginState = userauthentication.loginUser(username, password, errorMsg);
+    
 
-    // The loginUser() call initiates an asynchronous process (like sending a network request).
-    // The result (success/failure) will come back via signals (loginSucceeded/loginFailed/challengeReceived/challengeFailed).
-    // So, you should NOT transition to HomePage directly here.
-    if (loginProcessInitiated){
-        qDebug() << "Login process initiated for user:" << username;
-        // Optionally, display a "Logging in..." message to the user here.
-        // ui->statusLabel->setText("Logging in..."); // If you have a status label
-    } else {
-        qDebug() << "Login initiation failed for user:" << username << "Error:" << errorMsg;
-        // Directly call the slot that handles login failure to update your UI
-        onLoginFailed(errorMsg);
+    if (loginState){
+
+        qDebug()<< "Login Successful";
+        UploadPage registerDialog(nullptr);
+
+        //TODO: This is only authenticating locally
+        registerDialog.setAttribute(Qt::WA_DeleteOnClose);
+        this->accept(); 
+        registerDialog.exec(); 
+
+  /*
+        qDebug()<< "Login Successful for user:" << username;
+
+        this->accept();
+        HomePage *homePage = new HomePage(username, nullptr);
+        homePage->setAttribute(Qt::WA_DeleteOnClose);
+        homePage->exec();
+        */
+
+
+    }else{
+        qDebug() << "Login failed for user:" << username << "Error:" << errorMsg;
     }
 }
 

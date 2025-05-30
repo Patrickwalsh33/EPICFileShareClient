@@ -4,6 +4,8 @@
 #include "../../auth/UserAuthentication.h"
 #include "../../auth/validation.h"
 #include "../../auth/CommonPasswordChecker.h"
+#include "registerManager.h"
+
 
 namespace Ui {
 class RegisterPage;
@@ -21,6 +23,8 @@ public:
 private slots:
     void on_registerButton_clicked();
     void on_backToLoginButton_clicked();
+    void onServerRegistrationSucceeded();
+    void onServerRegistrationFailed(const QString &error);
 
 private:
     Ui::RegisterPage *ui; // Pointer to the auto-generated UI class
@@ -29,6 +33,9 @@ private:
     CommonPasswordChecker* passwordChecker;
     PasswordValidator* passwordValidator;
     UserAuthentication* userAuth;
+    RegisterManager* registerManager;
+
 
     int failed;
 };
+
