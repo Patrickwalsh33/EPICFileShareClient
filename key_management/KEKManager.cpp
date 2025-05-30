@@ -85,7 +85,7 @@ void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek)
     storeEncryptedKey("oneTimeKey", encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
 }
 
-void KEKManager::decryptAndStoredUserKeys(const std::vector<unsigned char>& kek) {
+void KEKManager::decryptStoredUserKeys(const std::vector<unsigned char>& kek) {
     KeyEncryptor::EncryptedData identityEncrypted = loadEncryptedKey("identityKey");
     KeyEncryptor::EncryptedData signedPreEncrypted = loadEncryptedKey("signedPreKey");
     KeyEncryptor::EncryptedData oneTimeEncrypted = loadEncryptedKey("oneTimeKey");

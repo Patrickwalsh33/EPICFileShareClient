@@ -42,7 +42,7 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
         qDebug() << "kek:" << kek;
         KEKManager::generateAndStoreUserKeys(kek);
 
-        KEKManager::decryptAndStoredUserKeys(kek);
+        KEKManager::decryptStoredUserKeys(kek);
 
         encryptedKEK = kekManager->encryptKEK(masterKey, kek, kekNonce);
 
