@@ -1,6 +1,7 @@
 #include "ProfilePage.h"
 #include "ui_ProfilePage.h"
 #include <QDebug>
+#include "../../auth/UserAuthentication.h"
 
 ProfilePage::ProfilePage(const QString &username, QWidget *parent) :
     QDialog(parent),
@@ -49,12 +50,7 @@ void ProfilePage::on_changePasswordButton_clicked()
         return;
     }
 
-    // Verify old password by attempting to login
     QString errorMsg;
-    if (!userAuth->loginUser(currentUsername, oldPassword, errorMsg)) {
-        updateMessageLabel("Current password is incorrect", true);
-        return;
-    }
 
     // Validate new password
     if (!passwordValidator->validatePassword(newPassword, confirmNewPassword, errorMsg)) {
@@ -62,15 +58,16 @@ void ProfilePage::on_changePasswordButton_clicked()
         return;
     }
 
-    // Register new password
-    if (userAuth->registerUser(currentUsername, newPassword, confirmNewPassword, errorMsg)) {
+    if (userAuth->changePassword(oldPassword.toStdString(), newPassword.toStdString(), masterKeySalt, encryptedKEK, kekNonce)) {
         updateMessageLabel("Password changed successfully!", false);
-        
+
         // Clear the input fields
         ui->oldPasswordLineEdit->clear();
         ui->newPasswordLineEdit->clear();
         ui->confirmPasswordLineEdit->clear();
-    } else {
+
+        return;
+    }else {
         updateMessageLabel("Failed to change password: " + errorMsg, true);
     }
 } 

@@ -5,10 +5,9 @@
 #include <vector>
 #include "../key_management/KEKManager.h"
 
-
-static std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
-static std::vector<unsigned char> encryptedKEK;
-static std::vector<unsigned char> kekNonce;
+std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
+std::vector<unsigned char> encryptedKEK;
+std::vector<unsigned char> kekNonce;
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator)
     : validator(validator),
@@ -122,6 +121,24 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     // TODO: Check credentials against database
     
     return true;
+}
+bool UserAuthentication::changePassword(const std::string& oldPassword, const std::string& newPassword, std::vector<unsigned char>& salt, std::vector<unsigned char>& en_kek, std::vector<unsigned char>& nonce){
+    std::vector<unsigned char> masterKey;
+    std::vector<unsigned char> decryptedKEK;
+    masterKey = masterKeyDerivation->deriveMaster(oldPassword, masterKeySalt);
+
+    try{
+        decryptedKEK = kekManager->decryptKEK(masterKey, en_kek, nonce);
+        qDebug()<< "Decrypted KEK on password change: " << decryptedKEK;
+
+    } catch (const std::exception& e) {
+        qDebug() << "Error decrypting kek on password change" << e.what();
+        return false;
+    }
+
+    en_kek = kekManager->encryptKEK(masterKey, decryptedKEK, nonce);
+    return true;
+
 }
 UserAuthentication::~UserAuthentication()
 {

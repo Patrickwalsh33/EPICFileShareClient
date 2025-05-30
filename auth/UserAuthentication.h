@@ -6,8 +6,14 @@
 #include "../key_management/EncryptionKeyGenerator.h"
 #include "../key_management/KEKManager.h"
 
+extern std::vector<unsigned char> masterKeySalt;
+extern std::vector<unsigned char> encryptedKEK;
+extern std::vector<unsigned char> kekNonce;
+
 class UserAuthentication {
+
 public:
+
     UserAuthentication(PasswordValidator* validator);
     ~UserAuthentication();
     
@@ -16,6 +22,8 @@ public:
     
     // Login a user
     bool loginUser(const QString& username, const QString& password, QString& errorMsg);
+
+    bool changePassword(const std::string& oldPassword, const std::string& newPassword, std::vector<unsigned char>& salt, std::vector<unsigned char>& en_kek, std::vector<unsigned char>& nonce);
 
 private:
     PasswordValidator* validator;
