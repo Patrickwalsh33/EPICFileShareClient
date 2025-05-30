@@ -19,7 +19,7 @@ UploadPage::UploadPage(QWidget *parent) :
     ui->setupUi(this);
 
     // Replace the standard buttons with HoverButton
-    HoverButton* selectFileBtn = new HoverButton(this);
+    HoverButton* selectFileBtn =  new HoverButton(this);
     selectFileBtn->setGeometry(ui->selectFileButton->geometry());
     selectFileBtn->setText(ui->selectFileButton->text());
     selectFileBtn->setStyleSheet(ui->selectFileButton->styleSheet());

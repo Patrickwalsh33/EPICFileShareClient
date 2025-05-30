@@ -41,8 +41,8 @@ add_executable(MyQtApp
         auth/CommonPasswordChecker.h
         auth/UserAuthentication.cpp
         auth/UserAuthentication.h
-        FrontEnd/UploadPage/uploadManager.cpp
-        FrontEnd/UploadPage/uploadManager.h
+        Network/uploadManager.cpp
+        Network/uploadManager.h
         key_management/EncryptionKeyGenerator.cpp
         key_management/EncryptionKeyGenerator.h
         key_management/MasterKeyDerivation.cpp
