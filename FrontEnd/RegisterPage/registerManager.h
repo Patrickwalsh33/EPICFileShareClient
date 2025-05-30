@@ -12,11 +12,10 @@ Q_OBJECT
 
 public:
     explicit RegisterManager(QObject *parent = nullptr);
-    static constexpr int DEFAULT_ONETIME_KEYS = 10;
     ~RegisterManager();
 
     void setServerUrl(const QString &url);
-    bool registerUserWithManager(const QString &username, int numOneTimeKeys = DEFAULT_ONETIME_KEYS);
+    bool sendRegistrationData(const QJsonObject& registrationData);
 
 signals:
     void registrationSucceeded();
