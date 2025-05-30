@@ -53,7 +53,6 @@ bool RegisterManager::sendRegistrationData(const QJsonObject& registrationData) 
 
         // SSL configuration
         QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-        sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
         request.setSslConfiguration(sslConfig);
 
         // Send POST request
