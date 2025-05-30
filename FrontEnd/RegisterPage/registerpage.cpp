@@ -50,6 +50,7 @@ void RegisterPage::on_registerButton_clicked()
     QString confirmPassword = ui->confirmPasswordLineEdit->text();
     QString errorMessage;
 
+    // Register user using the authentication service
     if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
         ui->errorLabel->setStyleSheet("color: red");

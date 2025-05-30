@@ -2,6 +2,8 @@
 #include "ui_loginpage.h"
 #include <QDebug>
 #include "../UploadPage/uploadpage.h"
+#include "../../auth/UserAuthentication.h"
+
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
 LoginPage::LoginPage(QWidget *parent) :
@@ -23,13 +25,44 @@ void LoginPage::on_loginButton_clicked(){
     qDebug() << "loginButton_clicked";
     qDebug() << "navigating to UploadPage";
 
-    UploadPage registerDialog(nullptr);
-    registerDialog.setAttribute(Qt::WA_DeleteOnClose);
+    QString username = ui->usernameLineEdit->text();
+    QString password = ui->passwordLineEdit->text();
 
-    this->accept(); // Close HomePage
+    qDebug() << username;
+    qDebug() << password;
 
-    registerDialog.exec(); // Show Upload page modally
+    UserAuthentication auth(nullptr);
+    QString errorMsg;
+    bool loginState = auth.loginUser(username, password, errorMsg);
+    
+    UploadPage registerDialog(nullptr); 
+
+
+    if (loginState){
+        qDebug()<< "Login Successful";
+        UploadPage registerDialog(nullptr);
+        
+        registerDialog.setAttribute(Qt::WA_DeleteOnClose);
+        this->accept(); 
+        registerDialog.exec(); 
+
+    }else{
+        qDebug() << "login failed" << errorMsg;
+    }
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 // Slot for handling the goToRegistationButton's clicked signal.
 void LoginPage::on_goToRegistationButton_clicked()

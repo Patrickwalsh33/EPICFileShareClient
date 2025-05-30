@@ -3,12 +3,27 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <cctype>
+#include "keychain/keychain.h"
+
 
 void print_hex(const char* label, const unsigned char* data, size_t len) {
     std::cout << label;
     for (size_t i = 0; i < len; i++)
         printf("%02x", data[i]);
     std::cout << std::endl;
+}
+
+X3DHKeyBundle::X3DHKeyBundle()
+        : identityKeyPair(),
+          signedPreKeyPair(identityKeyPair.getPrivateKey()),
+          oneTimeKeyPair() {
+    print_hex("Identity Private Key: ", identityKeyPair.getPrivateKey().data(), identityKeyPair.getPrivateKey().size());
+    print_hex("Identity Public Key: ", identityKeyPair.getPublicKey().data(), identityKeyPair.getPublicKey().size());
+    print_hex("Signed PreKey Private: ", signedPreKeyPair.getPrivateKey().data(), signedPreKeyPair.getPrivateKey().size());
+    print_hex("Signed Prekey Public: ", signedPreKeyPair.getPublicKey().data(), signedPreKeyPair.getPublicKey().size());
+    print_hex("One Time Key Private: ", oneTimeKeyPair.getPrivateKey().data(), oneTimeKeyPair.getPrivateKey().size());
+    print_hex("One Time Key Public: ", oneTimeKeyPair.getPublicKey().data(), oneTimeKeyPair.getPublicKey().size());
 }
 
 bool derive_key_from_shared_secret(
@@ -91,3 +106,142 @@ bool decrypt_dek(
     return true;
 }
 
+static const char* base64_chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz"
+        "0123456789+/";
+
+static inline bool is_base64(unsigned char c) {
+    return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+std::string base64Encode(const std::vector<unsigned char>& data) {
+    std::string ret;
+    int i = 0;
+    int j = 0;
+    unsigned char char_array_3[3];
+    unsigned char char_array_4[4];
+    int data_len = static_cast<int>(data.size());
+    int pos = 0;
+
+    while (data_len--) {
+        char_array_3[i++] = data[pos++];
+        if (i == 3) {
+            char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+            char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+            char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+            char_array_4[3] = char_array_3[2] & 0x3f;
+
+            for(i = 0; i <4; i++)
+                ret += base64_chars[char_array_4[i]];
+            i = 0;
+        }
+    }
+
+    if (i) {
+        for(j = i; j < 3; j++)
+            char_array_3[j] = '\0';
+
+        char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+        char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+        char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+        char_array_4[3] = char_array_3[2] & 0x3f;
+
+        for (j = 0; j < i + 1; j++)
+            ret += base64_chars[char_array_4[j]];
+
+        while((i++ < 3))
+            ret += '=';
+    }
+
+    return ret;
+}
+
+std::vector<unsigned char> base64Decode(const std::string& encoded_string) {
+    int in_len = static_cast<int>(encoded_string.size());
+    int i = 0;
+    int j = 0;
+    int in_ = 0;
+    unsigned char char_array_4[4], char_array_3[3];
+    std::vector<unsigned char> ret;
+
+    while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
+        char_array_4[i++] = encoded_string[in_]; in_++;
+        if (i ==4) {
+            for (i = 0; i <4; i++)
+                char_array_4[i] = static_cast<unsigned char>(strchr(base64_chars, char_array_4[i]) - base64_chars);
+
+            char_array_3[0] = ( char_array_4[0] << 2       ) + ((char_array_4[1] & 0x30) >> 4);
+            char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+            char_array_3[2] = ((char_array_4[2] & 0x3) << 6) +   char_array_4[3];
+
+            for (i = 0; i < 3; i++)
+                ret.push_back(char_array_3[i]);
+            i = 0;
+        }
+    }
+
+    if (i) {
+        for (j = i; j <4; j++)
+            char_array_4[j] = 0;
+
+        for (j = 0; j <4; j++)
+            char_array_4[j] = static_cast<unsigned char>(strchr(base64_chars, char_array_4[j]) - base64_chars);
+
+        char_array_3[0] = ( char_array_4[0] << 2       ) + ((char_array_4[1] & 0x30) >> 4);
+        char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+        char_array_3[2] = ((char_array_4[2] & 0x3) << 6) +   char_array_4[3];
+
+        for (j = 0; j < i - 1; j++) ret.push_back(char_array_3[j]);
+    }
+
+    return ret;
+}
+
+// Define constants for package and user
+static const std::string PACKAGE = "fileShare";
+static const std::string USER = "username";  // swap for actual username
+static keychain::Error keychainError;
+
+//storing encrypted key + nonce
+void storeEncryptedKey(
+        const std::string& keyName,
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& nonce
+) {
+    // Encode to base64
+    std::string ciphertextB64 = base64Encode(ciphertext);
+    std::string nonceB64 = base64Encode(nonce);
+
+    // Store ciphertext and nonce as separate entries
+    keychain::setPassword(PACKAGE, keyName + "_ciphertext", USER, ciphertextB64, keychainError);
+    if (keychainError) {
+        std::cerr << "Error storing ciphertext for " << keyName << ": " << keychainError.message << std::endl;
+        return;
+    }
+
+    keychain::setPassword(PACKAGE, keyName + "_nonce", USER, nonceB64, keychainError);
+    if (keychainError) {
+        std::cerr << "Error storing nonce for " << keyName << ": " << keychainError.message << std::endl;
+        return;
+    }
+}
+
+KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName) {
+
+    std::string ciphertextB64 = keychain::getPassword(PACKAGE, keyName + "_ciphertext", USER, keychainError);
+    if (keychainError) {
+        throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + keychainError.message);
+    }
+
+    std::string nonceB64 = keychain::getPassword(PACKAGE, keyName + "_nonce", USER, keychainError);
+    if (keychainError) {
+        throw std::runtime_error("Failed to load nonce for " + keyName + ": " + keychainError.message);
+    }
+
+    KeyEncryptor::EncryptedData encryptedData;
+    encryptedData.ciphertext = base64Decode(ciphertextB64);
+    encryptedData.nonce = base64Decode(nonceB64);
+
+    return encryptedData;
+}
