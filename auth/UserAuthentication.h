@@ -1,5 +1,4 @@
-#ifndef USERAUTHENTICATION_H
-#define USERAUTHENTICATION_H
+#pragma once
 
 #include <QString>
 #include "validation.h"
@@ -27,5 +26,3 @@ private:
     std::string deriveMasterKeyFromPassword(const QString& password, const std::vector<unsigned char>& salt);
     // TODO: Add database connection or storage mechanism
 };
-
-#endif // USERAUTHENTICATION_H

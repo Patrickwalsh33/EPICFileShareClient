@@ -17,15 +17,19 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium)
-
+add_subdirectory(keychain)
 
 
 add_executable(MyQtApp
         main.cpp
         FrontEnd/LoginPage/loginpage.cpp
         FrontEnd/LoginPage/loginpage.ui
-        FrontEnd/HomePage/home.cpp
-        FrontEnd/HomePage/home.ui
+        FrontEnd/LandingPage/landingpage.cpp
+        FrontEnd/LandingPage/landingpage.ui
+        FrontEnd/ProfilePage/ProfilePage.cpp
+        FrontEnd/ProfilePage/ProfilePage.ui
+        FrontEnd/HomePage/homepage.cpp
+        FrontEnd/HomePage/homepage.ui
         X3DH/X3DH.h
         X3DH/X3DH.cpp
         FrontEnd/RegisterPage/registerpage.cpp
@@ -69,7 +73,7 @@ add_executable(MyQtApp
 
 target_include_directories(MyQtApp PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Password
-        PkgConfig::LIBSODIUM
+        ${CMAKE_CURRENT_SOURCE_DIR}/keychain/include
 )
 
 target_link_libraries(MyQtApp
@@ -78,6 +82,7 @@ target_link_libraries(MyQtApp
         Qt6::Widgets
         Qt6::Network
         PkgConfig::LIBSODIUM
+        keychain
 )
 
 

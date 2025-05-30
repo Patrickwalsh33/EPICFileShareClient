@@ -1,0 +1,3 @@
+[submodule "keychain"]
+	path = keychain
+	url = https://github.com/hrantzsch/keychain.git
