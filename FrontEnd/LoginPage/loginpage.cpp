@@ -3,6 +3,7 @@
 #include <QDebug>
 #include "../HomePage/homepage.h"
 #include "../../auth/UserAuthentication.h"
+#include "../UploadPage/uploadpage.h"
 
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
