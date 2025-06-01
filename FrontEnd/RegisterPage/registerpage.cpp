@@ -19,7 +19,8 @@ RegisterPage::RegisterPage(QWidget *parent) :
     // Initialize auth components
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
-    userAuth = new UserAuthentication(passwordValidator);
+    userAuth = new UserAuthentication(passwordValidator, package, user, this);
+
 }
 
 // Destructor

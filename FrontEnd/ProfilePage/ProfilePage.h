@@ -28,6 +28,8 @@ private:
     CommonPasswordChecker* passwordChecker;
     PasswordValidator* passwordValidator;
     UserAuthentication* userAuth;
+    std::string user;
+    std::string package;
     void updateMessageLabel(const QString& message, bool isError);
 };
 

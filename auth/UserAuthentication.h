@@ -20,7 +20,7 @@ enum RequestType {
 class UserAuthentication : public QObject{
     Q_OBJECT
 public:
-    UserAuthentication(PasswordValidator* validator, QObject *parent = nullptr);
+    UserAuthentication(PasswordValidator* validator, const std::string& appPackage, const std::string& appUser, QObject *parent = nullptr);
     ~UserAuthentication();
     
     // Register a new user
@@ -49,7 +49,7 @@ private:
     PasswordValidator* validator;
     MasterKeyDerivation* masterKeyDerivation;
     EncryptionKeyGenerator* encryptionKeyGenerator;
-    KEKManager* kekManager;
+    std::unique_ptr<KEKManager> kekManager;
 
     QNetworkAccessManager *networkManager;
     QNetworkReply *currentReply;
@@ -59,6 +59,8 @@ private:
     QString m_originalNonceBase64; // To store the original nonce string
 
     std::vector<unsigned char> m_decryptedKek;
+    std::string appPackage_;
+    std::string appUser_;
 
 
 

@@ -10,8 +10,7 @@
 LoginPage::LoginPage(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::LoginPage),
-    userauthentication(new PasswordValidator(new CommonPasswordChecker()), this) // This line is now correct based on PasswordValidator's constructor
-
+    userauthentication(new PasswordValidator(new CommonPasswordChecker()), package, user, this)
 {
     ui->setupUi(this);
 

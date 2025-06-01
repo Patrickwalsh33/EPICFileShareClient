@@ -29,4 +29,6 @@ private:
     UserAuthentication userauthentication;
     QByteArray currentNonce; // Store the received nonce for signing
     QString currentUsername;
+    std::string user;
+    std::string package;
 };

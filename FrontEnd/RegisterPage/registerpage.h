@@ -31,4 +31,6 @@ private:
     UserAuthentication* userAuth;
 
     int failed;
+    std::string package;
+    std::string user;
 };

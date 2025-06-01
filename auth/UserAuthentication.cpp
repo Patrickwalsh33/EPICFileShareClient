@@ -6,6 +6,7 @@
 #include <vector>
 #include "../key_management/KEKManager.h"
 #include "../crypto/crypto_utils.h"
+#include "../key_management/KeyEncryptor.h"
 
 
 
@@ -13,11 +14,11 @@ static std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
 static std::vector<unsigned char> encryptedKEK;
 static std::vector<unsigned char> kekNonce;
 
-UserAuthentication::UserAuthentication(PasswordValidator* validator, QObject *parent)
+UserAuthentication::UserAuthentication(PasswordValidator* validator,const std::string& appPackage, const std::string& appUser, QObject *parent)
     : QObject(parent),
     validator(validator),
     masterKeyDerivation(new MasterKeyDerivation()),
-    kekManager(new KEKManager()),
+    kekManager(std::make_unique<KEKManager>(appPackage, appUser)),
     networkManager(new QNetworkAccessManager(this)),
     currentReply(nullptr),
     currentRequestType(Challenge)
@@ -52,12 +53,12 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
         auto kek = EncryptionKeyGenerator::generateKey(32); //Generates the KEK
 
         qDebug() << "kek:" << kek;
-        KEKManager::generateAndStoreUserKeys(kek);
+        kekManager->generateAndStoreUserKeys(kek);
 
-        KEKManager::decryptStoredUserKeys(kek);
+        kekManager->decryptStoredUserKeys(kek);
 
-        encryptedKEK = kekManager->encryptKEK(masterKey, kek, kekNonce);
-        storeEncryptedKey("Enkek", encryptedKEK, kekNonce);
+        kekManager->encryptKEK(masterKey, kek, kekNonce);
+
 
         qDebug() << "MasterKey Derived Successfully:" << masterKey;
         qDebug() << "User registration successful for:" << username;
@@ -116,6 +117,10 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
 
 
     //GETS DECRYPTED KEY ENCYPTION KEY
+
+    KeyEncryptor::EncryptedData encryptedKEKkeychain;
+    keychain::Error loadError;
+    encryptedKEKkeychain = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError)
     try{
         tempdecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;

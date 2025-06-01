@@ -1,6 +1,15 @@
 #include "KeyEncryptor.h"
 #include <sodium.h>
 #include <stdexcept>
+#include "keychain/keychain.h"
+#include "../crypto/crypto_utils.h"
+#include <iostream>
+
+KeyEncryptor::KeyEncryptor(const std::string& package, const std::string& user)
+    :package_(package), user_(user)
+{
+
+}
 
 KeyEncryptor::EncryptedData KeyEncryptor::encrypt(
         const std::vector<unsigned char>& plaintext,
@@ -56,4 +65,50 @@ std::vector<unsigned char> KeyEncryptor::decrypt(
     decrypted.resize(decrypted_len);
     return decrypted;
 }
+void KeyEncryptor::storeEncryptedKey(
+        const std::string& keyName,
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& nonce,
+
+        keychain::Error& keychainError
+) {
+    // Encode to base64
+    std::string ciphertextB64 = base64Encode(ciphertext);
+    std::string nonceB64 = base64Encode(nonce);
+
+    // Store ciphertext and nonce as separate entries
+    keychain::setPassword(package_, keyName + "_ciphertext", package_, ciphertextB64, keychainError);
+    if (keychainError) {
+        std::cerr << "Error storing ciphertext for " << keyName << ": " << keychainError.message << std::endl;
+        return;
+    }
+
+    keychain::setPassword(package_, keyName + "_nonce", package_, nonceB64, keychainError);
+    if (keychainError) {
+        std::cerr << "Error storing nonce for " << keyName << ": " << keychainError.message << std::endl;
+        return;
+    }
+}
+KeyEncryptor::EncryptedData KeyEncryptor::loadEncryptedKey(
+        const std::string& keyName,
+        keychain::Error& keychainError
+    ) {
+
+    std::string ciphertextB64 = keychain::getPassword(package_, keyName + "_ciphertext", user_, keychainError);
+    if (keychainError) {
+        throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + keychainError.message);
+    }
+
+    std::string nonceB64 = keychain::getPassword(package_, keyName + "_nonce", user_, keychainError);
+    if (keychainError) {
+        throw std::runtime_error("Failed to load nonce for " + keyName + ": " + keychainError.message);
+    }
+
+    KeyEncryptor::EncryptedData encryptedData;
+    encryptedData.ciphertext = base64Decode(ciphertextB64);
+    encryptedData.nonce = base64Decode(nonceB64);
+
+    return encryptedData;
+}
+
 
