@@ -9,7 +9,7 @@ namespace Ui {
 class HomePage;
 }
 class ProfilePage;
-// class UploadPage;
+class UploadPage;
 // class LoginPage;
 
 class HomePage : public QDialog
@@ -22,7 +22,9 @@ public:
 
 private slots:
     void on_profileButton_clicked();
-    // void on_uploadButton_clicked();
+    void on_uploadButton_clicked();
+    void on_filesSentButton_clicked();
+    void on_filesReceivedButton_clicked();
     // void on_logoutButton_clicked();
 
 private:

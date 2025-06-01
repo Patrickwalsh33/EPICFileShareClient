@@ -1,8 +1,9 @@
 #include "homepage.h"
-#include "ui_homepage.h" // Will be generated from homepage.ui
+#include "ui_homepage.h" 
 #include "../ProfilePage/ProfilePage.h"
-// #include "../UploadPage/uploadpage.h" // Removed
-// #include "../LoginPage/loginpage.h"   // Removed
+#include "../UploadPage/uploadpage.h"
+#include "../SentFiles/sentfilespage.h"
+#include "../RecievedFiles/recievedfilespage.h"
 #include <QDebug>
 
 HomePage::HomePage(const QString &username, QWidget *parent) :
@@ -11,7 +12,7 @@ HomePage::HomePage(const QString &username, QWidget *parent) :
     currentUsername(username)
 {
     ui->setupUi(this);
-    ui->welcomeLabel->setText(QString("Welcome, %1!").arg(currentUsername));
+    ui->welcomeLabel->setText("Welcome to the Leftovers Home Page");
 }
 
 HomePage::~HomePage()
@@ -25,5 +26,27 @@ void HomePage::on_profileButton_clicked()
     ProfilePage *profilePage = new ProfilePage(currentUsername, this);
     profilePage->setAttribute(Qt::WA_DeleteOnClose);
     profilePage->exec();
+}
+
+void HomePage::on_uploadButton_clicked()
+{
+    qDebug() << "Upload button clicked on HomePage for user:" << currentUsername;
+    UploadPage *uploadPage = new UploadPage(this);
+    uploadPage->setAttribute(Qt::WA_DeleteOnClose);
+    uploadPage->exec();
+}
+
+void HomePage::on_filesSentButton_clicked()
+{
+    SentFilesPage *sentFilesPage = new SentFilesPage(this);
+    sentFilesPage->setAttribute(Qt::WA_DeleteOnClose);
+    sentFilesPage->exec();
+}
+
+void HomePage::on_filesReceivedButton_clicked()
+{
+    RecievedFilesPage *recievedFilesPage = new RecievedFilesPage(this);
+    recievedFilesPage->setAttribute(Qt::WA_DeleteOnClose);
+    recievedFilesPage->exec();
 }
 

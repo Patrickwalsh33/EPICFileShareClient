@@ -17,7 +17,7 @@ public:
 
 private slots:
     void on_loginButton_clicked(); // Slot for handling loginButton clicks.
-    void on_goToRegistationButton_clicked(); // Slot for handling goToRegistationButton clicks.
+    void on_backToLandingButton_clicked(); // Slot for handling backToLandingButton clicks.
 
 private:
     Ui::LoginPage *ui; // Pointer to the auto-generated UI class from loginpage.ui.

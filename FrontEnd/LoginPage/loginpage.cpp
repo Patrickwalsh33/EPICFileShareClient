@@ -4,6 +4,7 @@
 #include "../HomePage/homepage.h"
 #include "../../auth/UserAuthentication.h"
 #include "../UploadPage/uploadpage.h"
+#include "../LandingPage/landingpage.h"
 
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
@@ -36,25 +37,11 @@ void LoginPage::on_loginButton_clicked(){
     
 
     if (loginState){
-
-        qDebug()<< "Login Successful";
-        UploadPage registerDialog(nullptr);
-
-        //TODO: This is only authenticating locally
-        registerDialog.setAttribute(Qt::WA_DeleteOnClose);
-        this->accept(); 
-        registerDialog.exec(); 
-
-  /*
         qDebug()<< "Login Successful for user:" << username;
-
         this->accept();
         HomePage *homePage = new HomePage(username, nullptr);
         homePage->setAttribute(Qt::WA_DeleteOnClose);
         homePage->exec();
-        */
-
-
     }else{
         qDebug() << "Login failed for user:" << username << "Error:" << errorMsg;
     }
@@ -70,7 +57,14 @@ void LoginPage::on_loginButton_clicked(){
 
 
 // Slot for handling the goToRegistationButton's clicked signal.
-void LoginPage::on_goToRegistationButton_clicked()
+
+
+// Slot for handling the backToLandingButton's clicked signal.
+void LoginPage::on_backToLandingButton_clicked()
 {
-    qDebug() << "goToRegistationButton_clicked from LoginPage";
+    qDebug() << "backToLandingButton_clicked from LoginPage";
+    LandingPage landingDialog(nullptr);
+    landingDialog.setAttribute(Qt::WA_DeleteOnClose);
+    this->accept(); // Close LoginPage
+    landingDialog.exec(); // Show LandingPage modally
 }
