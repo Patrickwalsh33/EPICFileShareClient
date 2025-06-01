@@ -2,6 +2,7 @@
 #define LOGINPAGE_H
 
 #include <QDialog>
+#include "../../auth/UserAuthentication.h"
 namespace Ui {
 class LoginPage;
 }

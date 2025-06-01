@@ -27,10 +27,10 @@ public:
     EncryptionKeyGenerator* keyGenerator;
 
     void encryptKEK(const std::vector<unsigned char>& masterKey, const std::vector<unsigned char>& kek,std::vector<unsigned char>& nonceOut);
-    static std::vector<unsigned char> decryptKEK(const std::vector<unsigned char>& masterKey, const std::vector<unsigned char>& kek, const std::vector<unsigned char>& nonce);
+    std::vector<unsigned char> decryptKEK(const std::vector<unsigned char>& masterKey, const std::vector<unsigned char>& kek, const std::vector<unsigned char>& nonce);
 
     void generateAndStoreUserKeys(const std::vector<unsigned char>& kek, int numOneTimeKeys = DEFAULT_ONETIME_KEYS);
-    void decryptStoredUserKeys(const std::vector<unsigned char>& kek);
+    DecryptedKeyData decryptStoredUserKeys(const std::vector<unsigned char>& kek);
     KeyEncryptor keyEncryptor_;
 
 

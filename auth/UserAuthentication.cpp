@@ -19,6 +19,7 @@
 
 
 
+
 static std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
 static std::vector<unsigned char> encryptedKEK;
 static std::vector<unsigned char> kekNonce;
@@ -46,11 +47,6 @@ static RegisterManager* registerManager = nullptr;
 
 
 
-UserAuthentication::UserAuthentication(PasswordValidator* validator)
-    : validator(validator),
-masterKeyDerivation(new MasterKeyDerivation()),
-kekManager(new KEKManager()) {
-}
 
 bool UserAuthentication::registerUser(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
     std::vector<unsigned char> originalDecryptedKEK;
@@ -114,7 +110,7 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
 bool UserAuthentication::generateAndRegisterX3DHKeys(const QString& username, const std::vector<unsigned char>& kek, QString& errorMsg) {
     try {
-        DecryptedKeyData storedKeys = KEKManager::decryptStoredUserKeys(kek);
+        DecryptedKeyData storedKeys = kekManager->decryptStoredUserKeys(kek);
 
         // Extract public keys from private keys using libsodium functions
         std::vector<unsigned char> identityPublicKey(crypto_sign_PUBLICKEYBYTES);
@@ -232,18 +228,11 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         tempdecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;
 
-
-        decryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
-        qDebug()<< "Decrypted KEK on login: " << decryptedKEK;
-
-
     } catch (const std::exception& e) {
         qDebug() << "error decrypting kek Line 117" << e.what();
         return false;
     }
 
-
-    qDebug() << encryptedKEK << "LINE 122";
     qDebug() << "Login attempt for user:" << username;
     
     // TODO: Check credentials against database

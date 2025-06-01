@@ -37,10 +37,14 @@ void LoginPage::on_loginButton_clicked(){
 
     qDebug() << "Attempting login for user:" << username;
 
-    UserAuthentication auth(nullptr);
+    // Create UserAuthentication with proper parameters
+    PasswordValidator* validator = new PasswordValidator(new CommonPasswordChecker());
+    UserAuthentication auth(validator, package1, user1, this);
     QString errorMsg;
     bool loginState = auth.loginUser(username, password, errorMsg);
     
+    // Clean up
+    delete validator;
 
     if (loginState){
         qDebug()<< "Login Successful for user:" << username;
