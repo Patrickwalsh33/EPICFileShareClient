@@ -10,7 +10,7 @@ HomePage::HomePage(const QString &username, QWidget *parent) :
     currentUsername(username)
 {
     ui->setupUi(this);
-    ui->welcomeLabel->setText(QString("Welcome, %1!").arg(currentUsername));
+    ui->welcomeLabel->setText("Welcome to the Leftovers Home Page");
 }
 
 HomePage::~HomePage()
