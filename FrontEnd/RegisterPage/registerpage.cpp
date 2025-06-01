@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include "../LoginPage/loginpage.h"
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
+#include "../LandingPage/landingpage.h"
 
 
 
@@ -88,11 +89,8 @@ void RegisterPage::onServerRegistrationFailed(const QString &error)
 void RegisterPage::on_backToLoginButton_clicked()
 {
     qDebug() << "backToLoginButton_clicked";
-    
-    LoginPage loginDialog(nullptr);
-    loginDialog.setAttribute(Qt::WA_DeleteOnClose);
-    
+    LandingPage landingDialog(nullptr);
+    landingDialog.setAttribute(Qt::WA_DeleteOnClose);
     this->accept(); // Close RegisterPage
-    
-    loginDialog.exec(); // Show LoginPage modally
+    landingDialog.exec(); // Show LandingPage modally
 }
