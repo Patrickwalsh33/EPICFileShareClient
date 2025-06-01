@@ -4,6 +4,7 @@
 #include "../HomePage/homepage.h"
 #include "../../auth/UserAuthentication.h"
 #include "../UploadPage/uploadpage.h"
+#include "../LandingPage/landingpage.h"
 
 
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
@@ -59,4 +60,14 @@ void LoginPage::on_loginButton_clicked(){
 void LoginPage::on_goToRegistationButton_clicked()
 {
     qDebug() << "goToRegistationButton_clicked from LoginPage";
+}
+
+// Slot for handling the backToLandingButton's clicked signal.
+void LoginPage::on_backToLandingButton_clicked()
+{
+    qDebug() << "backToLandingButton_clicked from LoginPage";
+    LandingPage landingDialog(nullptr);
+    landingDialog.setAttribute(Qt::WA_DeleteOnClose);
+    this->accept(); // Close LoginPage
+    landingDialog.exec(); // Show LandingPage modally
 }
