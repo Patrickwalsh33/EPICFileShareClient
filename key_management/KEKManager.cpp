@@ -136,7 +136,7 @@ DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned ch
     decryptedKeys.signedPreKeyPrivate = decryptedSignedPreKey;
 
     //decrypt the one-time keys separately
-    for (int i = 0; i < DEFAULT_ONETIME_KEYS; i++) {
+    /*for (int i = 0; i < DEFAULT_ONETIME_KEYS; i++) {
         keychain::Error keychainError;
         std::string keyName = "oneTimeKey_" + std::to_string(i);
         KeyEncryptor::EncryptedData oneTimeEncrypted = keyEncryptor_.loadEncryptedKey(keyName, keychainError);
@@ -144,7 +144,7 @@ DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned ch
 
         print_hex("Decrypted One Time Key: ", decryptedOneTimeKey.data(), decryptedOneTimeKey.size());
         decryptedKeys.oneTimeKeyPrivates.push_back(decryptedOneTimeKey);
-    }
+    }*/
     
     return decryptedKeys;
 }
