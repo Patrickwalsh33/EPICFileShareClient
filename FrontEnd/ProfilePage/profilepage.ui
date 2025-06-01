@@ -216,6 +216,22 @@ QPushButton:pressed {
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="backButton">
+     <property name="minimumSize">
+      <size>
+       <width>80</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: #D32F2F; color: white; border: 2px solid #B71C1C; border-radius: 5px; padding: 5px; font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Back</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QLabel" name="messageLabel">
      <property name="styleSheet">
       <string notr="true">color: #e74c3c; 
