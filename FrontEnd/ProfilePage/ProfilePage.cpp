@@ -13,7 +13,7 @@ ProfilePage::ProfilePage(const QString &username, QWidget *parent) :
     // Initialize password checking components
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
-    userAuth = new UserAuthentication(passwordValidator);
+    userAuth = new UserAuthentication(passwordValidator, package, user, this);
 }
 
 ProfilePage::~ProfilePage()

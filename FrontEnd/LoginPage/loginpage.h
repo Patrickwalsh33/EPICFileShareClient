@@ -21,6 +21,13 @@ private slots:
 
 private:
     Ui::LoginPage *ui; // Pointer to the auto-generated UI class from loginpage.ui.
+
+    UserAuthentication userauthentication;
+    QByteArray currentNonce; // Store the received nonce for signing
+    QString currentUsername;
+    std::string user;
+    std::string package;
+
 };
 
 #endif 
