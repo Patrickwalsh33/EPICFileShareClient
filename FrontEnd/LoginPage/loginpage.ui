@@ -196,7 +196,7 @@
     <string notr="true">color: white; background-color: #D32F2F; border-radius: 15px;</string>
    </property>
    <property name="text">
-    <string>Back</string>
+    <string>Back to Landing Page</string>
    </property>
   </widget>
   <widget class="QLabel" name="errorLabel">

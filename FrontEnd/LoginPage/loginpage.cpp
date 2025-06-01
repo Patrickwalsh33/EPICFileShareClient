@@ -57,10 +57,7 @@ void LoginPage::on_loginButton_clicked(){
 
 
 // Slot for handling the goToRegistationButton's clicked signal.
-void LoginPage::on_goToRegistationButton_clicked()
-{
-    qDebug() << "goToRegistationButton_clicked from LoginPage";
-}
+
 
 // Slot for handling the backToLandingButton's clicked signal.
 void LoginPage::on_backToLandingButton_clicked()

@@ -17,7 +17,6 @@ public:
 
 private slots:
     void on_loginButton_clicked(); // Slot for handling loginButton clicks.
-    void on_goToRegistationButton_clicked(); // Slot for handling goToRegistationButton clicks.
     void on_backToLandingButton_clicked(); // Slot for handling backToLandingButton clicks.
 
 private:
