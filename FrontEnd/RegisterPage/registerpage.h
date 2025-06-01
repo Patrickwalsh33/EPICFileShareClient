@@ -1,4 +1,5 @@
-#pragma once
+#ifndef REGISTERPAGE_H
+#define REGISTERPAGE_H
 
 #include <QDialog>
 #include "../../auth/UserAuthentication.h"
@@ -21,6 +22,8 @@ public:
 private slots:
     void on_registerButton_clicked();
     void on_backToLoginButton_clicked();
+    void onServerRegistrationSucceeded();
+    void onServerRegistrationFailed(const QString &error);
 
 private:
     Ui::RegisterPage *ui; // Pointer to the auto-generated UI class
@@ -34,3 +37,5 @@ private:
     std::string package;
     std::string user;
 };
+
+#endif 

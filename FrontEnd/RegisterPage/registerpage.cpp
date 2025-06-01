@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include "../LoginPage/loginpage.h"
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
+#include "../LandingPage/landingpage.h"
 
 
 
@@ -21,7 +22,9 @@ RegisterPage::RegisterPage(QWidget *parent) :
     // Initialize auth components
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
+
     userAuth = new UserAuthentication(passwordValidator, package1, user1, this);
+
 
 }
 
@@ -50,32 +53,48 @@ void RegisterPage::on_registerButton_clicked()
         ui->errorLabel->setStyleSheet("color: red");
         return;
     }
-    
-    // Show success message
-    QMessageBox::information(this, "Registration Successful", 
-                          "Your account has been created successfully.\n"
-                          "You will now be redirected to the login page.");
-    
-    // Navigate to login page
+
+}
+
+void RegisterPage::onServerRegistrationSucceeded()
+{
+    qDebug() << "Server registration succeeded";
+
+    ui->registerButton->setEnabled(true);
+
+    QMessageBox::information(this, "Registration Successful",
+                             "Your account has been created successfully.\n"
+                             "You will now be redirected to the login page.");
+
     LoginPage loginDialog(nullptr);
     loginDialog.setAttribute(Qt::WA_DeleteOnClose);
 
+    this->accept();
 
-    
-    this->accept(); // Close RegisterPage
-    
-    loginDialog.exec(); // Show LoginPage modally
+    loginDialog.exec();
+
+
 }
+
+void RegisterPage::onServerRegistrationFailed(const QString &error)
+{
+    qDebug() << "Server registration failed:" << error;
+
+    // Re-enable button
+    ui->registerButton->setEnabled(true);
+
+    // Show error message
+    ui->errorLabel->setText("Server registration failed: " + error);
+    ui->errorLabel->setStyleSheet("color: red");
+}
+
 
 // Slot for handling the backToLoginButton's clicked signal
 void RegisterPage::on_backToLoginButton_clicked()
 {
     qDebug() << "backToLoginButton_clicked";
-    
-    LoginPage loginDialog(nullptr);
-    loginDialog.setAttribute(Qt::WA_DeleteOnClose);
-    
+    LandingPage landingDialog(nullptr);
+    landingDialog.setAttribute(Qt::WA_DeleteOnClose);
     this->accept(); // Close RegisterPage
-    
-    loginDialog.exec(); // Show LoginPage modally
-} 
+    landingDialog.exec(); // Show LandingPage modally
+}

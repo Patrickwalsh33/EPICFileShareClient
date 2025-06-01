@@ -67,6 +67,14 @@ add_executable(MyQtApp
         key_management/DataEncryptionKey.cpp
         key_management/KeyEncryptor.h
         key_management/KeyEncryptor.cpp
+        FrontEnd/RegisterPage/registerManager.cpp
+        FrontEnd/RegisterPage/registerManager.h
+        FrontEnd/SentFiles/sentfilespage.cpp
+        FrontEnd/SentFiles/sentfilespage.h
+        FrontEnd/SentFiles/sentfilespage.ui
+        FrontEnd/RecievedFiles/recievedfilespage.cpp
+        FrontEnd/RecievedFiles/recievedfilespage.h
+        FrontEnd/RecievedFiles/recievedfilespage.ui
 )
 
 target_include_directories(MyQtApp PRIVATE

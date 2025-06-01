@@ -73,4 +73,10 @@ void ProfilePage::on_changePasswordButton_clicked()
     } else {
         updateMessageLabel("Failed to change password: " + errorMsg, true);
     }
+}
+
+void ProfilePage::on_backButton_clicked()
+{
+    reject();
+    qDebug() << "Back button clicked on ProfilePage";
 } 

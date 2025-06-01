@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RecievedFilesPage</class>
+ <widget class="QDialog" name="RecievedFilesPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>900</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Files Received</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>Files Received</string>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>48</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <!-- put get method here to display all the files received -->
+    <widget class="QTableWidget" name="filesTable">
+     <property name="columnCount">
+      <number>4</number>
+     </property>
+     <property name="rowCount">
+      <number>0</number>
+     </property>
+     <column>
+      <property name="text">
+       <string>Filename</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Sender</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Decrypt</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Download</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="backButton">
+     <property name="text">
+      <string>Back to Home</string>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>150</width>
+       <height>60</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: white; background-color: #D32F2F; border-radius: 15px; font-size: 22px; font-weight: bold;</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui> 

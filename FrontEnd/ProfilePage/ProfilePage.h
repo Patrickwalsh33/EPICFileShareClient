@@ -21,6 +21,7 @@ public:
 
 private slots:
     void on_changePasswordButton_clicked();
+    void on_backButton_clicked();
 
 private:
     Ui::ProfilePage *ui;
