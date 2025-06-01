@@ -9,6 +9,8 @@
 
 
 
+static const std::string package1 = "leftovers.project";
+static const std::string user1 = "tempUser";
 // Constructor
 RegisterPage::RegisterPage(QWidget *parent) :
     QDialog(parent),  //calls the parent constructor
@@ -20,7 +22,9 @@ RegisterPage::RegisterPage(QWidget *parent) :
     // Initialize auth components
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
-    userAuth = new UserAuthentication(passwordValidator);
+
+    userAuth = new UserAuthentication(passwordValidator, package1, user1, this);
+
 
 }
 

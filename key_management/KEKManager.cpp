@@ -1,12 +1,24 @@
 #include "KEKManager.h"
+
+#include <iostream>
+#include <QString>
 #include <sodium.h>
 #include "stdexcept"
 #include "KeyEncryptor.h"
 #include "../crypto/crypto_utils.h"
+#include "X3DHKeys/OneTimeKeyPair.h"
+static const std::string package1 = "leftovers.project";
+static const std::string user1 = "tempUser";
+
+KEKManager::KEKManager(const std::string& package, const std::string& user)
+    : keyEncryptor_(package, user)
+{
+
+}
 
 
+void KEKManager::encryptKEK(
 
-std::vector<unsigned char> KEKManager::encryptKEK(
     const std::vector<unsigned char>& masterKey,
     const std::vector<unsigned char>& kek,
     std::vector<unsigned char>& nonceOut){
@@ -14,7 +26,7 @@ std::vector<unsigned char> KEKManager::encryptKEK(
     if (masterKey.size() != crypto_aead_chacha20poly1305_ietf_KEYBYTES) {
         throw std::runtime_error("Invalid master key size");
     }
-
+    keychain::Error keychainError;
     nonceOut.resize(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
     randombytes_buf(nonceOut.data(), nonceOut.size());
 
@@ -30,8 +42,12 @@ std::vector<unsigned char> KEKManager::encryptKEK(
         masterKey.data()
         );
     ciphertext.resize(ciphertext_len);
-    return ciphertext;
 
+    keyEncryptor_.storeEncryptedKey("Enkek", ciphertext, nonceOut, keychainError);
+    if (keychainError)
+    {
+        throw std::runtime_error("Error encrypting");
+    }std::cout<<"Encrypted Kek stored successfully to OS keychain";
 }
 
 std::vector<unsigned char> KEKManager::decryptKEK(
@@ -61,8 +77,12 @@ std::vector<unsigned char> KEKManager::decryptKEK(
     return decryptedKEK;
 }
 
-void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek, int numOneTimeKeys) {
+
+void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek, int numOneTimeKeys)
+{
     X3DHKeyBundle bundle;
+
+    keychain::Error keychainError;
 
     auto identityPrivateKey = bundle.identityKeyPair.getPrivateKey();
     auto signedPreKeyPrivate = bundle.signedPreKeyPair.getPrivateKey();
@@ -76,9 +96,12 @@ void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek,
     print_hex("Encrypted Signed PreKey Ciphertext: ", encryptedSignedPreKey.ciphertext.data(), encryptedSignedPreKey.ciphertext.size());
     print_hex("Encrypted Signed PreKey Nonce: ", encryptedSignedPreKey.nonce.data(), encryptedSignedPreKey.nonce.size());
 
-    //storing the encrypted keys
-    storeEncryptedKey("identityKey", encryptedIdentityKey.ciphertext, encryptedIdentityKey.nonce);
-    storeEncryptedKey("signedPreKey", encryptedSignedPreKey.ciphertext, encryptedSignedPreKey.nonce);
+    auto encryptedOneTimeKey = KeyEncryptor::encrypt(oneTimeKeyPrivate, kek);
+    print_hex("Encrypted One Time Key Ciphertext: ", encryptedOneTimeKey.ciphertext.data(), encryptedOneTimeKey.ciphertext.size());
+    print_hex("Encrypted One Time Key Nonce: ", encryptedOneTimeKey.nonce.data(), encryptedOneTimeKey.nonce.size());
+
+    keyEncryptor_.storeEncryptedKey("identityKey", encryptedIdentityKey.ciphertext, encryptedIdentityKey.nonce,keychainError);
+    keyEncryptor_.storeEncryptedKey("signedPreKey", encryptedSignedPreKey.ciphertext, encryptedSignedPreKey.nonce,keychainError);
     for (int i = 0; i < numOneTimeKeys; i++) {
         OneTimeKeyPair oneTimeKey;
         auto oneTimeKeyPrivate = oneTimeKey.getPrivateKey();
@@ -90,13 +113,17 @@ void KEKManager::generateAndStoreUserKeys(const std::vector<unsigned char>& kek,
 
 
         std::string keyName = "oneTimeKey_" + std::to_string(i);
-        storeEncryptedKey(keyName, encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce);
+        keyEncryptor_.storeEncryptedKey(keyName, encryptedOneTimeKey.ciphertext, encryptedOneTimeKey.nonce,keychainError);
     }
 }
 
-DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned char>& kek) {
-    KeyEncryptor::EncryptedData identityEncrypted = loadEncryptedKey("identityKey");
-    KeyEncryptor::EncryptedData signedPreEncrypted = loadEncryptedKey("signedPreKey");
+DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned char>& kek)
+{
+    keychain::Error keychainError;
+
+    KeyEncryptor::EncryptedData identityEncrypted = keyEncryptor_.loadEncryptedKey("identityKey",keychainError);
+    KeyEncryptor::EncryptedData signedPreEncrypted = keyEncryptor_.loadEncryptedKey("signedPreKey",keychainError);
+    KeyEncryptor::EncryptedData oneTimeEncrypted = keyEncryptor_.loadEncryptedKey("oneTimeKey",keychainError);
 
     auto decryptedIdentityKey = KeyEncryptor::decrypt(identityEncrypted, kek);
     auto decryptedSignedPreKey = KeyEncryptor::decrypt(signedPreEncrypted, kek);
@@ -110,13 +137,15 @@ DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned ch
 
     //decrypt the one-time keys separately
     for (int i = 0; i < DEFAULT_ONETIME_KEYS; i++) {
+        keychain::Error keychainError;
         std::string keyName = "oneTimeKey_" + std::to_string(i);
-        KeyEncryptor::EncryptedData oneTimeEncrypted = loadEncryptedKey(keyName);
+        KeyEncryptor::EncryptedData oneTimeEncrypted = keyEncryptor_.loadEncryptedKey(keyName, keychainError);
         auto decryptedOneTimeKey = KeyEncryptor::decrypt(oneTimeEncrypted, kek);
 
         print_hex("Decrypted One Time Key: ", decryptedOneTimeKey.data(), decryptedOneTimeKey.size());
         decryptedKeys.oneTimeKeyPrivates.push_back(decryptedOneTimeKey);
     }
+    
     return decryptedKeys;
 }
 

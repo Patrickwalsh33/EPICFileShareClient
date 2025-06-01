@@ -7,10 +7,16 @@
 #include "../LandingPage/landingpage.h"
 
 
+static const std::string package1 = "leftovers.project";
+static const std::string user1 = "tempUser";
+
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
 LoginPage::LoginPage(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::LoginPage)
+
+    ui(new Ui::LoginPage),
+    userauthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1 , this)
+
 {
     ui->setupUi(this);
 }
@@ -31,10 +37,14 @@ void LoginPage::on_loginButton_clicked(){
 
     qDebug() << "Attempting login for user:" << username;
 
-    UserAuthentication auth(nullptr);
+    // Create UserAuthentication with proper parameters
+    PasswordValidator* validator = new PasswordValidator(new CommonPasswordChecker());
+    UserAuthentication auth(validator, package1, user1, this);
     QString errorMsg;
     bool loginState = auth.loginUser(username, password, errorMsg);
     
+    // Clean up
+    delete validator;
 
     if (loginState){
         qDebug()<< "Login Successful for user:" << username;

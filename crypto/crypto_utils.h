@@ -44,14 +44,8 @@ bool decrypt_with_chacha20(
         unsigned char* decrypted, unsigned long long* decrypted_len);
 
 // Function to store encrypted key + nonce
-void storeEncryptedKey(
-        const std::string& keyName,
-        const std::vector<unsigned char>& ciphertext,
-        const std::vector<unsigned char>& nonce
-);
 
 // Function to load encrypted key + nonce
-KeyEncryptor::EncryptedData loadEncryptedKey(const std::string& keyName);
 
 bool decrypt_dek(
         const std::vector<unsigned char>& encryptedDek,
