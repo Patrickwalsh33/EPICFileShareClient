@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>250</height>
+    <height>300</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,6 +47,35 @@
     </spacer>
    </item>
    <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="uploadButton">
+     <property name="text">
+      <string>Upload File</string>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>180</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: #1565C0; color: white; border: 2px solid #0D47A1; border-radius: 5px; padding: 10px; font-weight: bold;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer_Middle">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item alignment="Qt::AlignHCenter">
     <widget class="QPushButton" name="profileButton">
      <property name="text">
       <string>Go to Profile</string>
@@ -58,7 +87,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-color: #4CAF50; color: white; border-radius: 5px; padding: 10px;</string>
+      <string notr="true">background-color: #2E7D32; color: white; border: 2px solid #1B5E20; border-radius: 5px; padding: 10px; font-weight: bold;</string>
      </property>
     </widget>
    </item>
