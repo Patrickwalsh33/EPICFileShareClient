@@ -2,6 +2,8 @@
 #include "ui_homepage.h" 
 #include "../ProfilePage/ProfilePage.h"
 #include "../UploadPage/uploadpage.h"
+#include "../SentFiles/sentfilespage.h"
+#include "../RecievedFiles/recievedfilespage.h"
 #include <QDebug>
 
 HomePage::HomePage(const QString &username, QWidget *parent) :
@@ -32,5 +34,19 @@ void HomePage::on_uploadButton_clicked()
     UploadPage *uploadPage = new UploadPage(this);
     uploadPage->setAttribute(Qt::WA_DeleteOnClose);
     uploadPage->exec();
+}
+
+void HomePage::on_filesSentButton_clicked()
+{
+    SentFilesPage *sentFilesPage = new SentFilesPage(this);
+    sentFilesPage->setAttribute(Qt::WA_DeleteOnClose);
+    sentFilesPage->exec();
+}
+
+void HomePage::on_filesReceivedButton_clicked()
+{
+    RecievedFilesPage *recievedFilesPage = new RecievedFilesPage(this);
+    recievedFilesPage->setAttribute(Qt::WA_DeleteOnClose);
+    recievedFilesPage->exec();
 }
 

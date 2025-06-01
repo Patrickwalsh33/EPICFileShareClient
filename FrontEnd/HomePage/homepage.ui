@@ -135,6 +135,45 @@ QPushButton:pressed {
     </layout>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="filesButtonLayout">
+     <property name="spacing">
+      <number>20</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="filesSentButton">
+       <property name="minimumSize">
+        <size>
+         <width>450</width>
+         <height>180</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #1976D2; color: white; border: 2px solid #0D47A1; border-radius: 22px; font-size: 30px;</string>
+       </property>
+       <property name="text">
+        <string>Files Sent</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="filesReceivedButton">
+       <property name="minimumSize">
+        <size>
+         <width>450</width>
+         <height>180</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #388E3C; color: white; border: 2px solid #1B5E20; border-radius: 22px; font-size: 30px;</string>
+       </property>
+       <property name="text">
+        <string>Files Received</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <spacer name="verticalSpacer_Bottom">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
