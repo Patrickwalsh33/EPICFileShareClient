@@ -1,11 +1,10 @@
-#pragma once
+#ifndef REGISTERPAGE_H
+#define REGISTERPAGE_H
 
 #include <QDialog>
 #include "../../auth/UserAuthentication.h"
 #include "../../auth/validation.h"
 #include "../../auth/CommonPasswordChecker.h"
-#include "registerManager.h"
-
 
 namespace Ui {
 class RegisterPage;
@@ -33,9 +32,8 @@ private:
     CommonPasswordChecker* passwordChecker;
     PasswordValidator* passwordValidator;
     UserAuthentication* userAuth;
-    RegisterManager* registerManager;
-
 
     int failed;
 };
 
+#endif 
