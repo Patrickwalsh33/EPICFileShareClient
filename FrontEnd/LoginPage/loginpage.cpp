@@ -36,25 +36,11 @@ void LoginPage::on_loginButton_clicked(){
     
 
     if (loginState){
-
-        qDebug()<< "Login Successful";
-        UploadPage registerDialog(nullptr);
-
-        //TODO: This is only authenticating locally
-        registerDialog.setAttribute(Qt::WA_DeleteOnClose);
-        this->accept(); 
-        registerDialog.exec(); 
-
-  /*
         qDebug()<< "Login Successful for user:" << username;
-
         this->accept();
         HomePage *homePage = new HomePage(username, nullptr);
         homePage->setAttribute(Qt::WA_DeleteOnClose);
         homePage->exec();
-        */
-
-
     }else{
         qDebug() << "Login failed for user:" << username << "Error:" << errorMsg;
     }
