@@ -293,7 +293,7 @@ void UploadPage::on_uploadButton_clicked() {
 }
 
 void UploadPage::on_backButton_clicked() {
-    reject();
+    reject(); //when reject is called it returns to whatever code called it
     qDebug() << "Back button clicked";
 }
 
