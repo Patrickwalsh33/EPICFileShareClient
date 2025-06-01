@@ -77,13 +77,13 @@ void KeyEncryptor::storeEncryptedKey(
     std::string nonceB64 = base64Encode(nonce);
 
     // Store ciphertext and nonce as separate entries
-    keychain::setPassword(package_, keyName + "_ciphertext", package_, ciphertextB64, keychainError);
+    keychain::setPassword(package_, keyName + "_ciphertext", user_, ciphertextB64, keychainError);
     if (keychainError) {
         std::cerr << "Error storing ciphertext for " << keyName << ": " << keychainError.message << std::endl;
         return;
     }
 
-    keychain::setPassword(package_, keyName + "_nonce", package_, nonceB64, keychainError);
+    keychain::setPassword(package_, keyName + "_nonce", user_, nonceB64, keychainError);
     if (keychainError) {
         std::cerr << "Error storing nonce for " << keyName << ": " << keychainError.message << std::endl;
         return;
@@ -95,6 +95,7 @@ KeyEncryptor::EncryptedData KeyEncryptor::loadEncryptedKey(
     ) {
 
     std::string ciphertextB64 = keychain::getPassword(package_, keyName + "_ciphertext", user_, keychainError);
+
     if (keychainError) {
         throw std::runtime_error("Failed to load ciphertext for " + keyName + ": " + keychainError.message);
     }

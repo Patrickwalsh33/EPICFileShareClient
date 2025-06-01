@@ -13,6 +13,8 @@
 static std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
 static std::vector<unsigned char> encryptedKEK;
 static std::vector<unsigned char> kekNonce;
+static const std::string package1 = "leftovers.project";
+static const std::string user1 = "tempUser";
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator,const std::string& appPackage, const std::string& appUser, QObject *parent)
     : QObject(parent),
@@ -23,6 +25,8 @@ UserAuthentication::UserAuthentication(PasswordValidator* validator,const std::s
     currentReply(nullptr),
     currentRequestType(Challenge)
 {
+    qDebug() << "UserAuthentication created with appPackage:" << QString::fromStdString(appPackage);
+    qDebug() << "UserAuthentication created with appUser:" << QString::fromStdString(appUser);
     if (!QSslSocket::supportsSsl()) {
         qWarning() << "SSL is not supported on this system";
     }
@@ -49,24 +53,27 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
         randombytes_buf(masterKeySalt.data(), masterKeySalt.size());
 
         std::vector<unsigned char> masterKey = masterKeyDerivation->deriveMaster(password, masterKeySalt); //Uses Argon2id
+        // TODO add functionality to store the salt in keychain after deriving master key
 
         auto kek = EncryptionKeyGenerator::generateKey(32); //Generates the KEK
 
         qDebug() << "kek:" << kek;
-        kekManager->generateAndStoreUserKeys(kek);
+        kekManager->generateAndStoreUserKeys(kek); // Generates the necessary user keys (identity, signed pre key, one time keys) stores the private keys in OS keychain
+        qDebug() << "all stored correctly";
+        kekManager->decryptStoredUserKeys(kek); // retrieves and decrypts them here for testing
 
-        kekManager->decryptStoredUserKeys(kek);
+        kekManager->encryptKEK(masterKey, kek, kekNonce); // Creates the enkek by encrypting with the master key, this now gets stored to keychain under "Enkek"
 
-        kekManager->encryptKEK(masterKey, kek, kekNonce);
-
-
-        qDebug() << "MasterKey Derived Successfully:" << masterKey;
-        qDebug() << "User registration successful for:" << username;
-        qDebug() << "EN_KEK is created: " << encryptedKEK;
-        qDebug() << "KEK Nonce used: " << kekNonce;
-
-        originalDecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
-        qDebug()<< "Decrypted KEK on register: " << originalDecryptedKEK;
+        // keychain::Error loadError;
+        // auto encryptedKEK = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError);
+        //
+        // qDebug() << "MasterKey Derived Successfully:" << masterKey;
+        // qDebug() << "User registration successful for:" << username;
+        // qDebug() << "EN_KEK is created: " << encryptedKEK.ciphertext;
+        // qDebug() << "KEK Nonce used: " << kekNonce;
+        //
+        // originalDecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK.ciphertext, encryptedKEK.nonce); //Testing purposes
+        // qDebug()<< "Decrypted KEK on register: " << originalDecryptedKEK;
 
 
     } catch (const std::exception& e) {
@@ -82,11 +89,10 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
 bool UserAuthentication::loginUser(const QString& username, const QString& qpassword, QString& errorMsg) {
     std::vector<unsigned char> masterKey;
-    std::vector<unsigned char> tempdecryptedKEK;
+    std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
 
 
 
-    //for testing purposes
 
 
     //validates username
@@ -120,9 +126,9 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
 
     KeyEncryptor::EncryptedData encryptedKEKkeychain;
     keychain::Error loadError;
-    encryptedKEKkeychain = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError)
+    encryptedKEKkeychain = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError);
     try{
-        tempdecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK, kekNonce);
+        tempdecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;
 
 
@@ -297,8 +303,9 @@ void UserAuthentication::handleChallengeResponse()
                 decryptedKekQByteArray.clear();
                 unsigned char signature [crypto_sign_BYTES];
                 KeyEncryptor::EncryptedData identityEncrypted;
+                keychain::Error loadIdentityError;
                 try {
-                    identityEncrypted = loadEncryptedKey("identityKey");
+                    identityEncrypted = kekManager->keyEncryptor_.loadEncryptedKey("identityKey", loadIdentityError);
                 } catch (const std::exception& e) {
                     qCritical() << "Failed to load encrypted identity key:" << e.what();
                     emit challengeFailed(QString("Failed to load identity key: %1").arg(e.what()));
@@ -400,5 +407,4 @@ UserAuthentication::~UserAuthentication()
     }
 
     delete masterKeyDerivation;
-    delete kekManager;
 }

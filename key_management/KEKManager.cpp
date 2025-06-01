@@ -1,11 +1,13 @@
 #include "KEKManager.h"
 
 #include <iostream>
+#include <QString>
 #include <sodium.h>
 #include "stdexcept"
 #include "KeyEncryptor.h"
 #include "../crypto/crypto_utils.h"
-
+static const std::string package1 = "leftovers.project";
+static const std::string user1 = "tempUser";
 
 KEKManager::KEKManager(const std::string& package, const std::string& user)
     : keyEncryptor_(package, user)

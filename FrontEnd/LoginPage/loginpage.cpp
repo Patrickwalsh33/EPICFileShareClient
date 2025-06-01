@@ -6,11 +6,14 @@
 #include "../../auth/CommonPasswordChecker.h"
 #include "../../auth/validation.h" // Make sure this is included for PasswordValidator
 
+static const std::string package1 = "leftovers.project";
+static const std::string user1 = "tempUser";
+
 // Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
 LoginPage::LoginPage(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::LoginPage),
-    userauthentication(new PasswordValidator(new CommonPasswordChecker()), package, user, this)
+    userauthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1 , this)
 {
     ui->setupUi(this);
 
