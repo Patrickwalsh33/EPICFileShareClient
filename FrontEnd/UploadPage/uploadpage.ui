@@ -196,7 +196,7 @@
     <string notr="true">background-color: #D32F2F; color: white; border: 2px solid #B71C1C; border-radius: 15px; padding: 10px; font-weight: bold; font-size: 22px;</string>
    </property>
    <property name="text">
-    <string>Back</string>
+    <string>Back to Home</string>
    </property>
   </widget>
  </widget>
