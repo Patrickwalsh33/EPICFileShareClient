@@ -16,6 +16,12 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QDebug>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QSslSocket>
+#include <QSslConfiguration>
+#include <QNetworkReply>
 
 
 
@@ -279,7 +285,6 @@ bool UserAuthentication::requestChallenge(const QString &username) {
 
     // SSL configuration
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    // sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     request.setSslConfiguration(sslConfig);
 
     // Send GET request
@@ -418,25 +423,32 @@ bool UserAuthentication::submitSignedChallenge(const QString &username, const QB
 
     qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Indented);
 
+    qDebug() << "Sending challenge to :" << serverUrl;
     // Create network request
-    QNetworkRequest request(QUrl(serverUrl + "/auth/login"));
+    QNetworkRequest request(QUrl (serverUrl + "/auth/login"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // SSL configuration
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     request.setSslConfiguration(sslConfig);
 
+
     // Send POST request
     currentRequestType = Login;
     currentReply = networkManager->post(request, jsonData);
+    qDebug() << "Response sent successfully"<< currentReply;
+
 
     // Connect signals
     connect(currentReply, &QNetworkReply::finished,
             this, &UserAuthentication::handleLoginResponse);
+    qDebug() << "handleloginresponse";
     connect(currentReply, &QNetworkReply::sslErrors,
             this, &UserAuthentication::handleSslErrors);
+    qDebug() << "sslErrors";
     connect(currentReply, &QNetworkReply::errorOccurred,
             this, &UserAuthentication::handleNetworkError);
+    qDebug() << "network error";
 
     return true;
 }
@@ -444,6 +456,12 @@ bool UserAuthentication::submitSignedChallenge(const QString &username, const QB
 
 void UserAuthentication::handleLoginResponse()
 {
+    qDebug() << "handleLoginResponse triggered.";
+    if (currentReply->error() != QNetworkReply::NoError) {
+        qDebug() << "Login Reply Error:" << currentReply->errorString();
+    } else {
+        qDebug() << "Login Reply Success.";
+    }
     if (currentReply->error() == QNetworkReply::NoError) {
         QByteArray response = currentReply->readAll();
         qDebug() << "Login successful. Server response:" << response;
@@ -459,18 +477,16 @@ void UserAuthentication::handleLoginResponse()
 }
 
 void UserAuthentication::handleSslErrors(const QList<QSslError> &errors) {
-    qDebug() << "SSL errors detected, but ignoring for testing:";
+    qDebug() << "handleSslErrors triggered.";
     for (const QSslError &error : errors) {
-        qDebug() << "  -" << error.errorString();
+        qDebug() << "SSL Error:" << error.errorString();
     }
-
-    if (currentReply) {
-        currentReply->ignoreSslErrors();
-    }
+    currentReply->ignoreSslErrors(errors);
 }
 
 void UserAuthentication::handleNetworkError(QNetworkReply::NetworkError error)
 {
+
     QString errorString = currentReply->errorString();
     qDebug() << "Network error occurred during" << (currentRequestType == Challenge ? "challenge" : "login") << ":" << errorString;
 
