@@ -222,6 +222,15 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     try{
 
         tempdecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
+        m_decryptedKekTemp = QByteArray(
+           reinterpret_cast<const char*>(tempdecryptedKEK.data()),
+           tempdecryptedKEK.size()
+       );
+
+        sodium_memzero(tempdecryptedKEK.data(), tempdecryptedKEK.size());
+        tempdecryptedKEK.clear();
+        sodium_memzero(masterKey.data(), masterKey.size());
+        masterKey.clear();
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;
 
     } catch (const std::exception& e) {
@@ -244,6 +253,7 @@ void UserAuthentication::setServerUrl(const QString &url) {
 bool UserAuthentication::requestChallenge(const QString &username) {
     setServerUrl("https://leftovers.gobbler.info");
     qDebug() << "Requesting challenge for user:" << username;
+    m_currentUsername = username;
 
     if (username.isEmpty()) {
         emit challengeFailed("Username cannot be empty.");
@@ -306,20 +316,13 @@ void UserAuthentication::handleChallengeResponse()
                 qDebug() << "Received nonce (Base64):" << nonceBase64;
 
 
-                QByteArray decryptedKekQByteArray = currentReply->property("decryptedKek").toByteArray();
-                if (decryptedKekQByteArray.isEmpty()) {
-                    qCritical() << "Error: Decrypted KEK not found in reply property. Cannot decrypt identity key.";
-                    emit challengeFailed("Internal error: KEK not available from reply.");
-                    currentReply->deleteLater();
-                    currentReply = nullptr;
-                    return;
-                }
+
                 std::vector<unsigned char> decryptedKekVector(
-                    reinterpret_cast<const unsigned char*>(decryptedKekQByteArray.constData()),
-                    reinterpret_cast<const unsigned char*>(decryptedKekQByteArray.constData()) + decryptedKekQByteArray.size()
+                    reinterpret_cast<const unsigned char*>(m_decryptedKekTemp.constData()),
+                    reinterpret_cast<const unsigned char*>(m_decryptedKekTemp.constData()) + m_decryptedKekTemp.size()
                 );
-                sodium_memzero(decryptedKekQByteArray.data(), decryptedKekQByteArray.size());
-                decryptedKekQByteArray.clear();
+                sodium_memzero(m_decryptedKekTemp.data(), m_decryptedKekTemp.size());
+                m_decryptedKekTemp.clear();
                 unsigned char signature [crypto_sign_BYTES];
                 KeyEncryptor::EncryptedData identityEncrypted;
                 keychain::Error loadIdentityError;
@@ -329,7 +332,7 @@ void UserAuthentication::handleChallengeResponse()
                     qCritical() << "Failed to load encrypted identity key:" << e.what();
                     emit challengeFailed(QString("Failed to load identity key: %1").arg(e.what()));
                     // Wipe KEK even on error
-                    sodium_memzero(decryptedKekQByteArray.data(), decryptedKekQByteArray.size());
+                    sodium_memzero(m_decryptedKekTemp.data(), m_decryptedKekTemp.size());
                     return;
                 }
 
@@ -363,7 +366,11 @@ void UserAuthentication::handleChallengeResponse()
                 }
                 sodium_memzero(decryptedIdentityPrivateKeyBytes.data(), decryptedIdentityPrivateKeyBytes.size());
                 decryptedIdentityPrivateKeyBytes.clear();
+
                 QByteArray signatureBytes(reinterpret_cast<const char*>(signature), crypto_sign_BYTES);
+                qDebug() << "Ed25519 signature received:" << signatureBytes;
+                qDebug() << "Ed25519 nonce bytes:"<< nonceBytes;
+                qDebug()<< "calling submit signed challenge for: "<< m_currentUsername;
                 submitSignedChallenge(m_currentUsername, signatureBytes, nonceBytes);
 
             } else {
@@ -417,7 +424,6 @@ bool UserAuthentication::submitSignedChallenge(const QString &username, const QB
 
     // SSL configuration
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     request.setSslConfiguration(sslConfig);
 
     // Send POST request
@@ -441,7 +447,7 @@ void UserAuthentication::handleLoginResponse()
     if (currentReply->error() == QNetworkReply::NoError) {
         QByteArray response = currentReply->readAll();
         qDebug() << "Login successful. Server response:" << response;
-        emit loginSucceeded();
+        emit loginSucceeded(m_currentUsername);
     } else {
         QString errorMsg = QString("Login failed: %1").arg(currentReply->errorString());
         qDebug() << errorMsg;

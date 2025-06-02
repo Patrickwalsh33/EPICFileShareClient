@@ -14,11 +14,15 @@ static const std::string user1 = "tempUser";
 LoginPage::LoginPage(QWidget *parent) :
     QDialog(parent),
 
-    ui(new Ui::LoginPage),
-    userauthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1 , this)
+    ui(new Ui::LoginPage)
+
 
 {
+
     ui->setupUi(this);
+    userauthentication = new UserAuthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1, this);
+    connect(userauthentication, &UserAuthentication::loginSucceeded,
+            this, &LoginPage::handleLoginSucceeded);
 }
 
 // Destructor: Deletes the UI object to free resources.
@@ -41,20 +45,37 @@ void LoginPage::on_loginButton_clicked(){
     PasswordValidator* validator = new PasswordValidator(new CommonPasswordChecker());
     UserAuthentication auth(validator, package1, user1, this);
     QString errorMsg;
-    bool loginState = auth.loginUser(username, password, errorMsg) && auth.requestChallenge(username) & ;
+    if (!userauthentication->loginUser(username, password, errorMsg))
+    {
+        qDebug() << "Initial login flow setup failed synchronously."
+        << errorMsg;
+        ui->loginButton->setEnabled(true);
+        return;
+    }
+
     // Clean up
     delete validator;
 
-    if (loginState){
-        qDebug()<< "Login Successful for user:" << username;
-        this->accept();
-        HomePage *homePage = new HomePage(username, nullptr);
-        homePage->setAttribute(Qt::WA_DeleteOnClose);
-        homePage->exec();
-    }else{
-        qDebug() << "Login failed for user:" << username << "Error:" << errorMsg;
-    }
+    ui->loginButton->setEnabled(false);
 
+}
+void LoginPage::handleLoginSucceeded(const QString &username)
+{
+    qDebug() << "Login Successful for user:" << username;
+
+
+    ui->loginButton->setEnabled(true);
+
+
+
+    this->accept(); // This closes the modal dialog and returns QDialog::Accepted
+
+
+    HomePage *homePage = new HomePage(username, nullptr); // Create a new HomePage instance
+
+    homePage->setAttribute(Qt::WA_DeleteOnClose); // Ensures the HomePage object is deleted
+
+    homePage->exec();
 }
 
 

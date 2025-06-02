@@ -40,7 +40,8 @@ signals:
     void challengeFailed(const QString &error);
     void challengeReceived(const QByteArray &nonce);
     void loginFailed(const QString &error);
-    void loginSucceeded();
+    void loginSucceeded(const QString &username);
+
 
 private slots:
     void handleChallengeResponse();
@@ -64,7 +65,7 @@ private:
     QString m_currentUsername; // To store username across async calls
     QString m_originalNonceBase64; // To store the original nonce string
 
-    std::vector<unsigned char> m_decryptedKek;
+    QByteArray m_decryptedKekTemp;
     std::string appPackage_;
     std::string appUser_;
 
