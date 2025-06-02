@@ -41,8 +41,7 @@ void LoginPage::on_loginButton_clicked(){
     PasswordValidator* validator = new PasswordValidator(new CommonPasswordChecker());
     UserAuthentication auth(validator, package1, user1, this);
     QString errorMsg;
-    bool loginState = auth.loginUser(username, password, errorMsg);
-    
+    bool loginState = auth.loginUser(username, password, errorMsg) && auth.requestChallenge(username) & ;
     // Clean up
     delete validator;
 

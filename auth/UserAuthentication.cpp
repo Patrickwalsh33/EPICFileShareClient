@@ -192,10 +192,6 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
 
 
-
-
-
-
     //validates username
     if (!validator->validateUsername(username, errorMsg)) {
         return false;
@@ -234,10 +230,9 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     }
 
     qDebug() << "Login attempt for user:" << username;
+
     
-    // TODO: Check credentials against database
-    
-    return true;
+    return requestChallenge(username);
 }
 
 
@@ -247,13 +242,14 @@ void UserAuthentication::setServerUrl(const QString &url) {
 }
 
 bool UserAuthentication::requestChallenge(const QString &username) {
+    setServerUrl("https://leftovers.gobbler.info");
     qDebug() << "Requesting challenge for user:" << username;
 
     if (username.isEmpty()) {
         emit challengeFailed("Username cannot be empty.");
         return false;
     }
-
+    qDebug() << "username is set now sending request to " << serverUrl;
     if (serverUrl.isEmpty()) {
         emit challengeFailed("Server URL is not set.");
         return false;
@@ -269,72 +265,22 @@ bool UserAuthentication::requestChallenge(const QString &username) {
 
     // Create network request
     QNetworkRequest request(url);
+    qDebug() << "Network request:" << request.url();
 
     // SSL configuration
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    // sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     request.setSslConfiguration(sslConfig);
 
     // Send GET request
     currentRequestType = Challenge;
     currentReply = networkManager->get(request);
+    qDebug() << "Challenge request sent";
+
 
     // Connect signals
     connect(currentReply, &QNetworkReply::finished,
             this, &UserAuthentication::handleChallengeResponse);
-    connect(currentReply, &QNetworkReply::sslErrors,
-            this, &UserAuthentication::handleSslErrors);
-    connect(currentReply, &QNetworkReply::errorOccurred,
-            this, &UserAuthentication::handleNetworkError);
-
-    return true;
-}
-
-bool UserAuthentication::submitLogin(const QString &username, const QByteArray &signature, const QByteArray &nonce) {
-    qDebug() << "Submitting login for user:" << username;
-
-    if (username.isEmpty()) {
-        emit loginFailed("Username cannot be empty.");
-        return false;
-    }
-
-    if (signature.isEmpty() || nonce.isEmpty()) {
-        emit loginFailed("Signature and nonce are required.");
-        return false;
-    }
-
-    if (serverUrl.isEmpty()) {
-        emit loginFailed("Server URL is not set.");
-        return false;
-    }
-
-    // Create JSON payload
-    QJsonObject loginData;
-    loginData["username"] = username;
-    loginData["signature"] = QString::fromLatin1(signature.toBase64());
-    loginData["nonce"] = QString::fromLatin1(nonce.toBase64());
-
-    QJsonDocument jsonDoc(loginData);
-    QByteArray jsonData = jsonDoc.toJson();
-
-    qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Indented);
-
-    // Create network request
-    QNetworkRequest request(QUrl(serverUrl + "/auth/login"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    // SSL configuration
-    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
-    request.setSslConfiguration(sslConfig);
-
-    // Send POST request
-    currentRequestType = Login;
-    currentReply = networkManager->post(request, jsonData);
-
-    // Connect signals
-    connect(currentReply, &QNetworkReply::finished,
-            this, &UserAuthentication::handleLoginResponse);
     connect(currentReply, &QNetworkReply::sslErrors,
             this, &UserAuthentication::handleSslErrors);
     connect(currentReply, &QNetworkReply::errorOccurred,
@@ -409,13 +355,17 @@ void UserAuthentication::handleChallengeResponse()
                     signature,
                     NULL,
                     reinterpret_cast<const unsigned char*>(nonceBytes.constData()),
-                    nonceBase64.length(),
+                    nonceBase64.size(),
                     decryptedIdentityPrivateKeyBytes.data()
                     );
                 if (result != 0){
                     throw std::runtime_error("Ed25519 signing failed.");
                 }
-                emit challengeReceived(nonceBytes);
+                sodium_memzero(decryptedIdentityPrivateKeyBytes.data(), decryptedIdentityPrivateKeyBytes.size());
+                decryptedIdentityPrivateKeyBytes.clear();
+                QByteArray signatureBytes(reinterpret_cast<const char*>(signature), crypto_sign_BYTES);
+                submitSignedChallenge(m_currentUsername, signatureBytes, nonceBytes);
+
             } else {
                 emit challengeFailed("Invalid response: nonce not found");
             }
@@ -430,7 +380,61 @@ void UserAuthentication::handleChallengeResponse()
 
     currentReply->deleteLater();
     currentReply = nullptr;
+
 }
+bool UserAuthentication::submitSignedChallenge(const QString &username, const QByteArray &signature, const QByteArray &nonce) {
+    qDebug() << "Submitting login for user:" << username;
+
+    if (username.isEmpty()) {
+        emit loginFailed("Username cannot be empty.");
+        return false;
+    }
+
+    if (signature.isEmpty() || nonce.isEmpty()) {
+        emit loginFailed("Signature and nonce are required.");
+        return false;
+    }
+
+    if (serverUrl.isEmpty()) {
+        emit loginFailed("Server URL is not set.");
+        return false;
+    }
+
+    // Create JSON payload
+    QJsonObject loginData;
+    loginData["username"] = username;
+    loginData["signature"] = QString::fromLatin1(signature.toBase64());
+    loginData["nonce"] = QString::fromLatin1(nonce.toBase64());
+
+    QJsonDocument jsonDoc(loginData);
+    QByteArray jsonData = jsonDoc.toJson();
+
+    qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Indented);
+
+    // Create network request
+    QNetworkRequest request(QUrl(serverUrl + "/auth/login"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // SSL configuration
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    request.setSslConfiguration(sslConfig);
+
+    // Send POST request
+    currentRequestType = Login;
+    currentReply = networkManager->post(request, jsonData);
+
+    // Connect signals
+    connect(currentReply, &QNetworkReply::finished,
+            this, &UserAuthentication::handleLoginResponse);
+    connect(currentReply, &QNetworkReply::sslErrors,
+            this, &UserAuthentication::handleSslErrors);
+    connect(currentReply, &QNetworkReply::errorOccurred,
+            this, &UserAuthentication::handleNetworkError);
+
+    return true;
+}
+
 
 void UserAuthentication::handleLoginResponse()
 {
