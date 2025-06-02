@@ -14,10 +14,7 @@
 #include <QNetworkRequest>
 #include <QSslError>
 
-enum RequestType {
-    Challenge,
-    Login
-};
+
 
 class UserAuthentication : public QObject {
     Q_OBJECT
@@ -25,7 +22,8 @@ class UserAuthentication : public QObject {
 public:
     UserAuthentication(PasswordValidator* validator, const std::string& appPackage, const std::string& appUser, QObject *parent = nullptr);
     ~UserAuthentication();
-    
+
+
     static constexpr int DEFAULT_ONETIME_KEYS = 10;
     
     // Register a new user
@@ -36,14 +34,14 @@ public:
     
     // Network methods
     void setServerUrl(const QString &url);
-    bool requestChallenge(const QString &username);
-    bool submitLogin(const QString &username, const QByteArray &signature, const QByteArray &nonce);
+
 
 signals:
     void challengeFailed(const QString &error);
     void challengeReceived(const QByteArray &nonce);
     void loginFailed(const QString &error);
-    void loginSucceeded();
+    void loginSucceeded(const QString &username);
+
 
 private slots:
     void handleChallengeResponse();
@@ -52,6 +50,9 @@ private slots:
     void handleNetworkError(QNetworkReply::NetworkError error);
 
 private:
+    bool requestChallenge(const QString &username);
+    bool submitSignedChallenge(const QString &username, const QByteArray &signature, const QByteArray &nonce);
+
     PasswordValidator* validator;
     MasterKeyDerivation* masterKeyDerivation;
     EncryptionKeyGenerator* encryptionKeyGenerator;
@@ -59,17 +60,21 @@ private:
 
     QNetworkAccessManager *networkManager;
     QNetworkReply *currentReply;
-    RequestType currentRequestType;
+    // RequestType currentRequestType;
     QString serverUrl;
     QString m_currentUsername; // To store username across async calls
     QString m_originalNonceBase64; // To store the original nonce string
 
-    std::vector<unsigned char> m_decryptedKek;
+    QByteArray m_decryptedKekTemp;
     std::string appPackage_;
     std::string appUser_;
 
     std::string deriveMasterKeyFromPassword(const QString& password, const std::vector<unsigned char>& salt);
     bool generateAndRegisterX3DHKeys(const QString& username, const std::vector<unsigned char>& kek, QString& errorMsg);
 
+    enum RequestType {
+        Challenge,
+        Login
+    } currentRequestType;
     // TODO: Add database connection or storage mechanism
 };

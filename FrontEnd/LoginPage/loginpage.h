@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include "../../auth/UserAuthentication.h"
+
 namespace Ui {
 class LoginPage;
 }
@@ -20,10 +21,12 @@ private slots:
     void on_loginButton_clicked(); // Slot for handling loginButton clicks.
     void on_backToLandingButton_clicked(); // Slot for handling backToLandingButton clicks.
 
+    void handleLoginSucceeded(const QString &username);
+
 private:
     Ui::LoginPage *ui; // Pointer to the auto-generated UI class from loginpage.ui.
 
-    UserAuthentication userauthentication;
+    UserAuthentication* userauthentication;
     QByteArray currentNonce; // Store the received nonce for signing
     QString currentUsername;
     std::string user;
