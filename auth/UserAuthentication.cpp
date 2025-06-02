@@ -363,7 +363,7 @@ void UserAuthentication::handleChallengeResponse()
                     signature,
                     NULL,
                     reinterpret_cast<const unsigned char*>(nonceBytes.constData()),
-                    nonceBase64.size(),
+                    nonceBytes.size(),
                     decryptedIdentityPrivateKeyBytes.data()
                     );
                 if (result != 0){
@@ -390,8 +390,7 @@ void UserAuthentication::handleChallengeResponse()
         emit challengeFailed(errorMsg);
     }
 
-    currentReply->deleteLater();
-    currentReply = nullptr;
+
 
 }
 bool UserAuthentication::submitSignedChallenge(const QString &username, const QByteArray &signature, const QByteArray &nonce) {
@@ -419,11 +418,15 @@ bool UserAuthentication::submitSignedChallenge(const QString &username, const QB
     loginData["nonce"] = QString::fromLatin1(nonce.toBase64());
 
     QJsonDocument jsonDoc(loginData);
-    QByteArray jsonData = jsonDoc.toJson();
+    QByteArray jsonData = jsonDoc.toJson(QJsonDocument::Compact);
 
-    qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Indented);
+    qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Compact);
 
     qDebug() << "Sending challenge to :" << serverUrl;
+    qDebug() << "--- RAW JSON DATA BEING SENT (HEX DUMP) ---";
+    qDebug() << jsonData.toHex(); // This will print the raw bytes as hexadecimal. No escaping here.
+    qDebug() << "--- END RAW JSON DATA ---";
+
     // Create network request
     QNetworkRequest request(QUrl (serverUrl + "/auth/login"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
