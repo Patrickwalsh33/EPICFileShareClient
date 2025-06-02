@@ -31,7 +31,7 @@ void uploadManager::setServerUrl(const QString &url) {
     serverUrl = url;
 }
 
-bool uploadManager::uploadFile(const QByteArray&fileData, const QUuid &uuid, const QString &jwtToken) {
+bool uploadManager::uploadFileServer(const QByteArray&fileData, const QUuid &uuid, const QString &jwtToken) {
 
     qDebug() << "Uploading file.";
     if (fileData.isEmpty()) {
@@ -102,6 +102,41 @@ bool uploadManager::requestRecipientKeys(const QString &username) {
     return true;
 
 }
+
+bool uploadManager::uploadFileShareRequest(const QByteArray &metadata, const QByteArray &ephemeralKey, const QString &jwtToken, const QByteArray &en_file_metadata_nonce) {
+    qDebug() << "Initiating file share request.";
+
+    if (serverUrl.isEmpty()) {
+        emit fileShareRequestFailed("Server URL is not set.");
+        return false;
+    }
+
+
+    QUrl url(serverUrl + "/upload/share");
+    QNetworkRequest request(url);
+
+    request.setRawHeader("Authorization", ("Bearer " + jwtToken).toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setSslConfiguration(QSslConfiguration::defaultConfiguration());
+
+    QJsonObject jsonPayload;
+    jsonPayload["metadata"] = QString(metadata.toBase64());
+    jsonPayload["ephemeralKey"] = QString(ephemeralKey.toBase64());
+    jsonPayload["nonce"] = QString(en_file_metadata_nonce.toBase64());
+
+    QJsonDocument jsonDoc(jsonPayload);
+    QByteArray postData = jsonDoc.toJson();
+
+    currentReply = networkManager->post(request, postData);
+
+    connect(currentReply, &QNetworkReply::sslErrors,
+            this, &uploadManager::handleSslErrors);
+    connect(currentReply, &QNetworkReply::errorOccurred,
+            this, &uploadManager::handleNetworkError);
+
+    return true;
+}
+
 
 void uploadManager::handleUploadProgress(qint64 bytesSent, qint64 bytesTotal)
 {
