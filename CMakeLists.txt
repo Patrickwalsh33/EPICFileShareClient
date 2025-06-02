@@ -30,8 +30,8 @@ add_executable(MyQtApp
         FrontEnd/ProfilePage/ProfilePage.ui
         FrontEnd/HomePage/homepage.cpp
         FrontEnd/HomePage/homepage.ui
-        X3DH/X3DH.h
-        X3DH/X3DH.cpp
+        X3DH/X3DH_shared.h
+        X3DH/X3DH_sender.cpp
         FrontEnd/RegisterPage/registerpage.cpp
         FrontEnd/RegisterPage/registerpage.ui
         crypto/crypto_utils.cpp
@@ -75,6 +75,7 @@ add_executable(MyQtApp
         FrontEnd/RecievedFiles/recievedfilespage.cpp
         FrontEnd/RecievedFiles/recievedfilespage.h
         FrontEnd/RecievedFiles/recievedfilespage.ui
+        X3DH/X3DH_reciever.cpp
 )
 
 target_include_directories(MyQtApp PRIVATE

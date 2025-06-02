@@ -2,7 +2,7 @@
 #include "FrontEnd/LoginPage/loginpage.h"
 #include "FrontEnd/LandingPage/landingpage.h"
 #include <QDebug>
-#include "X3DH/X3DH.h"
+#include "X3DH/X3DH_shared.h"
 #include "Testing/X3DHTest.h"
 #include "key_management/DataEncryptionKey.h"
 #include "crypto/crypto_utils.h"

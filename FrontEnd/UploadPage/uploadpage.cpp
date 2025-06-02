@@ -6,7 +6,7 @@
 #include <QFile>
 #include <QDebug>
 #include "../../crypto/crypto_utils.h"
-#include "../../X3DH/X3DH.h"
+#include "../../X3DH/X3DH_shared.h"
 #include <iostream>
 
 UploadPage::UploadPage(QWidget *parent) :
