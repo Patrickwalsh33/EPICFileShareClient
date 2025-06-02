@@ -16,7 +16,8 @@ public:
     ~uploadManager();
 
     void setServerUrl(const QString &url);
-    bool uploadFile(const QByteArray &fileData, const QByteArray &EncryptedDek); //the filepath might have to be changed to a QByteArray if we want to send the file contents directly
+    bool uploadFile(const QByteArray &fileData, const QByteArray &EncryptedDek, const QUuid &uuid, const QString &jwtToken);
+    bool requestRecipientKeys(const QString &username);
 
 signals:
     void uploadSucceeded(const QByteArray &EncryptedDek);
@@ -24,11 +25,19 @@ signals:
     void uploadProgress(qint64 bytesSent, qint64 bytesTotal);
     void sslError(const QString &error);
 
+    void recipientKeysReceived(const QString &username,
+                               const QByteArray &identityPublicKey,
+                               const QByteArray &signedPreKeyPublicKey,
+                               const QByteArray &signedPreKeySignature,
+                               const QList<QByteArray> &oneTimeKeys);
+    void recipientKeysFailed(const QString &error);
+
 private slots:
     void handleUploadProgress(qint64 bytesSent, qint64 bytesTotal);
     void handleUploadFinished();
     void handleSslErrors(const QList<QSslError> &errors);
     void handleNetworkError(QNetworkReply::NetworkError error);
+    void handleKeyRetrievalFinished();
 
 private:
     void setupSslConfiguration();
@@ -37,5 +46,8 @@ private:
     QByteArray currentDek;
     QNetworkReply *currentReply;
     QNetworkAccessManager *networkManager;
+
+    enum RequestType { Upload, KeyRetrieval } currentRequestType;
+
 
 };
