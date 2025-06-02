@@ -16,7 +16,7 @@ public:
     ~uploadManager();
 
     void setServerUrl(const QString &url);
-    bool uploadFile(const QByteArray &fileData, const QByteArray &EncryptedDek, const QUuid &uuid, const QString &jwtToken);
+    bool uploadFile(const QByteArray &fileData, const QUuid &uuid, const QString &jwtToken);
     bool requestRecipientKeys(const QString &username);
 
 signals:
@@ -28,8 +28,7 @@ signals:
     void recipientKeysReceived(const QString &username,
                                const QByteArray &identityPublicKey,
                                const QByteArray &signedPreKeyPublicKey,
-                               const QByteArray &signedPreKeySignature,
-                               const QList<QByteArray> &oneTimeKeys);
+                               const QByteArray &signedPreKeySignature);
     void recipientKeysFailed(const QString &error);
 
 private slots:

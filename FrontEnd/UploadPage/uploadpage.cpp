@@ -288,8 +288,8 @@ void UploadPage::on_uploadButton_clicked() {
         return;
     }
 
-    const auto& selectedFile = files[selectedFileIndex];
-    uploader->uploadFile(selectedFile.encryptedData, selectedFile.encryptedDek);
+    //const auto& selectedFile = files[selectedFileIndex];
+    //uploader->uploadFile(selectedFile.encryptedData //TODO: place UUID and Json Web token here );
 }
 
 void UploadPage::on_backButton_clicked() {

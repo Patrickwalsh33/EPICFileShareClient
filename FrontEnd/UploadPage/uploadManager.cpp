@@ -31,7 +31,7 @@ void uploadManager::setServerUrl(const QString &url) {
     serverUrl = url;
 }
 
-bool uploadManager::uploadFile(const QByteArray&fileData, const QByteArray &EncryptedDek, const QUuid &uuid, const QString &jwtToken) {
+bool uploadManager::uploadFile(const QByteArray&fileData, const QUuid &uuid, const QString &jwtToken) {
 
     qDebug() << "Uploading file.";
     if (fileData.isEmpty()) {
@@ -43,11 +43,9 @@ bool uploadManager::uploadFile(const QByteArray&fileData, const QByteArray &Encr
         emit uploadFailed("Server URL is not set.");
         return false;
     }
-    currentDek = EncryptedDek;
 
     QNetworkRequest request{QUrl(serverUrl)}; // creates a QNetworkRequest object that will be used to make a HTTPS request
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream"); //tells the server that we are sending binary data
-    request.setRawHeader("X-DEK", EncryptedDek.toBase64());
     request.setRawHeader("X-File-UUID", uuid.toByteArray());
     request.setRawHeader("Authorization", "Bearer " + jwtToken.toUtf8());
     request.setSslConfiguration(QSslConfiguration::defaultConfiguration());
@@ -136,8 +134,8 @@ void uploadManager::handleKeyRetrievalFinished() {
             if (jsonObj.contains("username") &&
                 jsonObj.contains("identityPublicKey") &&
                 jsonObj.contains("signedPreKeyPublicKey") &&
-                jsonObj.contains("signedPreKeySignature") &&
-                jsonObj.contains("oneTimeKeys")) {
+                jsonObj.contains("signedPreKeySignature"))
+                {
 
                 QString username = jsonObj["username"].toString();
 
@@ -149,20 +147,11 @@ void uploadManager::handleKeyRetrievalFinished() {
                 QByteArray signedPreKeySignature = QByteArray::fromBase64(
                         jsonObj["signedPreKeySignature"].toString().toLatin1());
 
-                //extracts the one-time keys from the array
-                QList<QByteArray> oneTimeKeys;
-                QJsonArray oneTimeKeysArray = jsonObj["oneTimeKeys"].toArray();
-                for (const QJsonValue &keyValue : oneTimeKeysArray) {
-                    QByteArray oneTimeKey = QByteArray::fromBase64(
-                            keyValue.toString().toLatin1());
-                    oneTimeKeys.append(oneTimeKey);
-                }
-                qDebug() << "Successfully retrieved keys for user:" << username;
-                qDebug() << "Number of one-time keys:" << oneTimeKeys.size();
 
-                emit recipientKeysReceived(username, identityPublicKey,
-                                           signedPreKeyPublicKey, signedPreKeySignature,
-                                           oneTimeKeys);
+                qDebug() << "Successfully retrieved keys for user:" << username;
+
+
+                emit recipientKeysReceived(username, identityPublicKey, signedPreKeyPublicKey, signedPreKeySignature);
             } else {
                 emit recipientKeysFailed("Invalid response: missing required fields");
             }
