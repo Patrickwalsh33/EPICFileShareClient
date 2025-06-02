@@ -4,10 +4,8 @@
 #include <sodium.h>
 #include <vector>
 #include "../key_management/KEKManager.h"
-
 #include "../crypto/crypto_utils.h"
 #include "../key_management/KeyEncryptor.h"
-
 #include "../FrontEnd/RegisterPage/registerManager.h"
 #include "../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../key_management/X3DHKeys/SignedPreKeyPair.h"
@@ -22,15 +20,20 @@
 #include <QSslSocket>
 #include <QSslConfiguration>
 #include <QNetworkReply>
+#include "keychain/keychain.h"
 
 
 
 
-static std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
+
+
 static std::vector<unsigned char> encryptedKEK;
 static std::vector<unsigned char> kekNonce;
 static const std::string package1 = "leftovers.project";
 static const std::string user1 = "tempUser";
+keychain::Error keychainError;
+keychain::Error loadError;
+
 
 
 UserAuthentication::UserAuthentication(PasswordValidator* validator,const std::string& appPackage, const std::string& appUser, QObject *parent)
@@ -56,6 +59,8 @@ static RegisterManager* registerManager = nullptr;
 
 bool UserAuthentication::registerUser(const QString& username, const QString& qpassword, const QString& confirmPassword, QString& errorMsg) {
     std::vector<unsigned char> originalDecryptedKEK;
+    std::vector<unsigned char> masterKeySalt(crypto_pwhash_SALTBYTES);
+
 
     // Validate username
     if (!validator->validateUsername(username, errorMsg)) {
@@ -71,11 +76,16 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
     try
     {
+
       //  std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES); // 16 byte salt
         randombytes_buf(masterKeySalt.data(), masterKeySalt.size());
+        qDebug() << "Original salt (hex):" << QByteArray(reinterpret_cast<const char*>(masterKeySalt.data()), masterKeySalt.size()).toHex();
+
 
         std::vector<unsigned char> masterKey = masterKeyDerivation->deriveMaster(password, masterKeySalt); //Uses Argon2id
-        // TODO add functionality to store the salt in keychain after deriving master key
+        std::string saltEncoded = base64Encode(masterKeySalt);
+        qDebug() << "Encoded salt (base64):" << QString::fromStdString(saltEncoded);
+        keychain::setPassword(package1, "MasterKeySalt", user1, saltEncoded, keychainError);
 
         auto kek = EncryptionKeyGenerator::generateKey(32); //Generates the KEK
 
@@ -87,8 +97,7 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
         kekManager->encryptKEK(masterKey, kek, kekNonce); // Creates the enkek by encrypting with the master key, this now gets stored to keychain under "Enkek"
 
-        // keychain::Error loadError;
-        // auto encryptedKEK = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError);
+        //         auto encryptedKEK = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError);
         //
         // qDebug() << "MasterKey Derived Successfully:" << masterKey;
         // qDebug() << "User registration successful for:" << username;
@@ -193,7 +202,7 @@ bool UserAuthentication::generateAndRegisterX3DHKeys(const QString& username, co
 }
 
 bool UserAuthentication::loginUser(const QString& username, const QString& qpassword, QString& errorMsg) {
-    std::vector<unsigned char> masterKey;
+    std::vector<unsigned char> masterKeyOnLogin;
 
     std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
 
@@ -209,9 +218,23 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
 
     //GETS MASTERKEY
     try {
+
+
+        auto saltEncoded = keychain::getPassword(package1, "MasterKeySalt", user1, keychainError);
+        qDebug() << "Encoded salt (base64):" << QString::fromStdString(saltEncoded);
+
+
+// Convert string back to original salt
+        std::vector<unsigned char> saltDecoded = base64Decode(saltEncoded);
+        qDebug() << "Decoded salt (hex):" << QByteArray(reinterpret_cast<const char*>(saltDecoded.data()), saltDecoded.size()).toHex();
+
+
+// Now use in master key derivation
+        masterKeyOnLogin = masterKeyDerivation->deriveMaster(password, saltDecoded);
+
+
         //gets masterkey from password by passing it and the salt into argon2
-        masterKey = masterKeyDerivation->deriveMaster(password, masterKeySalt); //Uses Argon2id
-        qDebug() << "Master Key on login: " << masterKey;
+        qDebug() << "Master Key on login: " << masterKeyOnLogin;
 
 
     } catch (const std::exception& e) {
@@ -223,24 +246,14 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     //GETS DECRYPTED KEY ENCYPTION KEY
 
     KeyEncryptor::EncryptedData encryptedKEKkeychain;
-    keychain::Error loadError;
     encryptedKEKkeychain = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError);
     try{
 
-        tempdecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
-        m_decryptedKekTemp = QByteArray(
-           reinterpret_cast<const char*>(tempdecryptedKEK.data()),
-           tempdecryptedKEK.size()
-       );
-
-        sodium_memzero(tempdecryptedKEK.data(), tempdecryptedKEK.size());
-        tempdecryptedKEK.clear();
-        sodium_memzero(masterKey.data(), masterKey.size());
-        masterKey.clear();
+        tempdecryptedKEK = kekManager->decryptKEK(masterKeyOnLogin, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;
 
     } catch (const std::exception& e) {
-        qDebug() << "error decrypting kek Line 117" << e.what();
+        qDebug() << "error decrypting kek " << e.what();
         return false;
     }
 

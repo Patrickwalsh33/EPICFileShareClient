@@ -4,6 +4,8 @@
 #include "keychain/keychain.h"
 #include "../crypto/crypto_utils.h"
 #include <iostream>
+#include <string>
+#include <vector>
 
 KeyEncryptor::KeyEncryptor(const std::string& package, const std::string& user)
     :package_(package), user_(user)
