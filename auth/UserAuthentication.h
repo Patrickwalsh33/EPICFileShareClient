@@ -64,6 +64,7 @@ private:
     QString serverUrl;
     QString m_currentUsername; // To store username across async calls
     QString m_originalNonceBase64; // To store the original nonce string
+    QString m_accessToken; //Store the JWT access token
 
     QByteArray m_decryptedKekTemp;
     std::string appPackage_;
