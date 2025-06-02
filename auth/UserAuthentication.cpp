@@ -252,6 +252,14 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         tempdecryptedKEK = kekManager->decryptKEK(masterKeyOnLogin, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;
 
+        m_decryptedKekTemp = QByteArray(
+                   reinterpret_cast<const char*>(tempdecryptedKEK.data()), tempdecryptedKEK.size());
+
+        sodium_memzero(tempdecryptedKEK.data(), tempdecryptedKEK.size());
+        tempdecryptedKEK.clear();
+        sodium_memzero(masterKeyOnLogin.data(), masterKeyOnLogin.size());
+        masterKeyOnLogin.clear();
+
     } catch (const std::exception& e) {
         qDebug() << "error decrypting kek " << e.what();
         return false;
