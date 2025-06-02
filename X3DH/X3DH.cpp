@@ -3,10 +3,8 @@
 #include <sodium.h>
 #include <iostream>
 #include <cstring>
-#include "../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../key_management/X3DHKeys/EphemeralKeyPair.h"
-#include "../key_management/X3DHKeys/SignedPreKeyPair.h"
-#include "../key_management/X3DHKeys/OneTimeKeyPair.h"
+
 
 bool run_x3dh(unsigned char* outSharedSecret, size_t outLen) {
     if (sodium_init() < 0) {
