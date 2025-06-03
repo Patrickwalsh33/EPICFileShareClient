@@ -76,6 +76,7 @@ struct FileInfo {
     QByteArray encryptedFileNonce;
     QByteArray encryptedMetadata;
     QByteArray metadataNonce;
+    QByteArray senderEphemeralPublicKey;
     std::vector<unsigned char> dek;
     bool isEncrypted;
     ClickableFrame* displayBox;

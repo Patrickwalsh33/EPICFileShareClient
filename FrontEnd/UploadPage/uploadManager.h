@@ -17,7 +17,13 @@ public:
 
     void setServerUrl(const QString &url);
     bool requestRecipientKeys(const QString& username);
-    bool uploadFile(const QByteArray &encryptedData, const QString &file_uuid, const QString &originalFileName);
+    bool uploadFile(const QByteArray &encryptedData, 
+                    const QString &file_uuid, 
+                    const QString &originalFileName,
+                    const QString &recipientUsername,
+                    const QByteArray &ephemeralPublicKey,
+                    const QByteArray &encryptedFileMetadata,
+                    const QByteArray &metadataNonce);
 
 signals:
     void recipientKeysFailed(const QString &error);
@@ -31,6 +37,7 @@ signals:
 private slots:
     void handleKeysReceived();
     void handleUploadFinished();
+    void handleMetadataShareFinished();
     void handleSslErrors(const QList<QSslError> &errors);
     void handleNetworkError(QNetworkReply::NetworkError error);
 
@@ -42,10 +49,17 @@ private:
     QNetworkReply *currentReply;
     QNetworkAccessManager *networkManager;
 
+    // Member variables to store data for the second POST request (metadata share)
+    QString m_recipientUsername_temp;
+    QByteArray m_ephemeralPublicKey_temp;
+    QByteArray m_encryptedFileMetadata_temp;
+    QByteArray m_metadataNonce_temp;
+
     // Enum to track the type of the current network operation
     enum RequestType_ {
         RetrieveKeys,
-        SendFile
+        SendFile,
+        ShareMetadata
     };
     RequestType_ currentRequestType;
 
