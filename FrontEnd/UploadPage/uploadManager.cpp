@@ -46,7 +46,6 @@ bool uploadManager::uploadFileServer(const QByteArray&fileData, const QUuid &uui
         emit uploadFailed("Server URL is not set.");
         return false;
     }
-
     QNetworkRequest request{QUrl(serverUrl)}; // creates a QNetworkRequest object that will be used to make a HTTPS request
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
     //tells the server that we are sending binary data
@@ -70,6 +69,13 @@ bool uploadManager::uploadFileServer(const QByteArray&fileData, const QUuid &uui
 bool uploadManager::requestRecipientKeys(const QString &username) {
     qDebug() << "Requesting keys for recipient:" << username;
 
+    QString jwtToken = m_userAuth->getAccessToken();
+
+    qDebug() << "JWT Token length:" << jwtToken.length();
+    qDebug() << "JWT Token (first 50 chars):" << jwtToken.left(50);
+    qDebug() << "JWT Token is empty:" << jwtToken.isEmpty();
+
+
     if (username.isEmpty()) {
         emit recipientKeysFailed("Username cannot be empty.");
         return false;
@@ -80,7 +86,7 @@ bool uploadManager::requestRecipientKeys(const QString &username) {
         return false;
     }
 
-    QUrl url(serverUrl + "/upload/user"); //TODO: change this to the right endpoint
+    QUrl url(serverUrl + "/users/"); //TODO: change this to the right endpoint
     QUrlQuery query;
     query.addQueryItem("username", username);
     url.setQuery(query);
@@ -89,6 +95,9 @@ bool uploadManager::requestRecipientKeys(const QString &username) {
 
     // Create network request
     QNetworkRequest request(url);
+    request.setRawHeader("Authorization", ("Bearer " + jwtToken).toUtf8());
+
+    qDebug() << "Network request with raw header set";
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     //sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     request.setSslConfiguration(sslConfig);
