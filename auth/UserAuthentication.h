@@ -35,6 +35,7 @@ public:
     // Network methods
     void setServerUrl(const QString &url);
     QString getAccessToken() const;
+    QByteArray getDecryptedKekTemp() const;
 
 
 signals:
@@ -42,6 +43,8 @@ signals:
     void challengeReceived(const QByteArray &nonce);
     void loginFailed(const QString &error);
     void loginSucceeded(const QString &username);
+    void registrationSucceeded();
+    void registrationFailed(const QString &error);
 
 
 private slots:

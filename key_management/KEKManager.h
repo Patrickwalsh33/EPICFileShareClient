@@ -33,6 +33,8 @@ public:
     DecryptedKeyData decryptStoredUserKeys(const std::vector<unsigned char>& kek);
     KeyEncryptor keyEncryptor_;
 
+    std::vector<unsigned char> decryptStoredPrivateIdentityKey(const std::vector<unsigned char>& kek);
+
 
 
     static std::vector<OneTimeKeyData> generateOneTimeKeys(int count);

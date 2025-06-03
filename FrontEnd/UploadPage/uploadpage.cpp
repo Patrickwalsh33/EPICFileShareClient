@@ -6,15 +6,23 @@
 #include <QFile>
 #include <QDebug>
 #include "../../crypto/crypto_utils.h"
-#include "../../X3DH/X3DH.h"
+#include "../../X3DH/X3DH_shared.h"
 #include <iostream>
+#include "../../key_management/X3DHKeys/EphemeralKeyPair.h"
+#include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
+#include "../../key_management/X3DHKeys/IdentityKeyPair.h"
+#include "../../key_management/KEKManager.h"
+#include "../SessionManager/SessionManager.h"
+
+std::string userPackage = "leftovers.project";
+std::string userId = "tempUser";
+
+KEKManager kekManager(userPackage, userId);
 
 UploadPage::UploadPage(QWidget *parent) :
         QDialog(parent),
         ui(new Ui::UploadPage),
         uploader(new uploadManager(this)),
-        //sets initial selected file index to invalid value so that its clear
-        //no file is selected at the start
         selectedFileIndex(static_cast<size_t>(-1)) {
     ui->setupUi(this);
 
@@ -185,6 +193,14 @@ void UploadPage::updateButtonStates() {
     }
 }
 
+void printSharedSecret(const unsigned char* secret, size_t length) {
+    std::cout << "Shared Secret: ";
+    for (size_t i = 0; i < length; ++i) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(secret[i]);
+    }
+    std::cout << std::dec << std::endl; // Reset formatting back to decimal
+}
+
 void UploadPage::on_encryptButton_clicked() {
     if (selectedFileIndex >= files.size() || files[selectedFileIndex].isEncrypted) {
         return;
@@ -207,8 +223,53 @@ void UploadPage::on_encryptButton_clicked() {
     );
 
 
+    EphemeralKeyPair ephemeralKeyPair;
+    const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
+    const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
+
+    IdentityKeyPair identityKeyPair;
+    const unsigned char* receiverIDPublicKey = identityKeyPair.getPublicKey().data();
+    const unsigned char* receiverIDPrivKey = identityKeyPair.getPrivateKey().data();
+
+
+    SignedPreKeyPair signedPreKeyPair(identityKeyPair.getPrivateKey());
+    const unsigned char* receiverSignedPrekeyPub = signedPreKeyPair.getPublicKey().data();
+    const unsigned char* receiverSignedPrekeySig = signedPreKeyPair.getSignature().data();
+
+
+
+
+    // Get KEK from SessionManager
+    QByteArray kek = SessionManager::getInstance()->getDecryptedKEK();
+    if (kek.isEmpty()) {
+        QMessageBox::critical(this, "Encryption Error", "User session is invalid or KEK not found. Please log in again.");
+        return;
+    }
+
+    std::vector<unsigned char> kekVector(
+            reinterpret_cast<const unsigned char*>(kek.constData()),
+            reinterpret_cast<const unsigned char*>(kek.constData()) + kek.size()
+    );
+
+    std::vector<unsigned char> SenderPrivIDKey = kekManager.decryptStoredPrivateIdentityKey(kekVector);
+    const unsigned char* senderId = SenderPrivIDKey.data();
+
+
+
+
     unsigned char sharedSecret[crypto_generichash_BYTES]; // 32 bytes
-    bool success = run_x3dh(sharedSecret, sizeof(sharedSecret));
+    bool success = x3dh_sender_derive_shared_secret(
+            sharedSecret,
+            sizeof(sharedSecret),
+            senderEphemeralPrivateKey,
+            senderId,
+            receiverIDPublicKey,
+            receiverSignedPrekeyPub,
+            receiverSignedPrekeySig);
+
+    if (success) {
+        printSharedSecret(sharedSecret, crypto_generichash_BYTES);
+    }
 
     unsigned char derivedKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES]; // 32 bytes
     const char context[8] = "X3DHKEY";
@@ -282,6 +343,7 @@ void UploadPage::on_encryptButton_clicked() {
                         "QPushButton:hover { background-color: #1976D2; }");
     msgBox.exec();
 }
+
 
 void UploadPage::on_uploadButton_clicked() {
     if (selectedFileIndex >= files.size() || !files[selectedFileIndex].isEncrypted) {
