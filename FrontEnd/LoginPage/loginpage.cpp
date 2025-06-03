@@ -20,6 +20,8 @@ LoginPage::LoginPage(QWidget *parent) :
 {
 
     ui->setupUi(this);
+    ui->errorLabel->clear();
+    ui->errorLabel->setVisible(false); // Hide error label initially
     userauthentication = new UserAuthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1, this);
     connect(userauthentication, &UserAuthentication::loginSucceeded,
             this, &LoginPage::handleLoginSucceeded);
@@ -50,6 +52,8 @@ void LoginPage::on_loginButton_clicked(){
         qDebug() << "Initial login flow setup failed synchronously."
         << errorMsg;
         ui->loginButton->setEnabled(true);
+        ui->errorLabel->setText(errorMsg);
+        ui->errorLabel->setVisible(true);
         return;
     }
 
@@ -57,6 +61,8 @@ void LoginPage::on_loginButton_clicked(){
     delete validator;
 
     ui->loginButton->setEnabled(false);
+    ui->errorLabel->clear();
+    ui->errorLabel->setVisible(false);
 
 }
 void LoginPage::handleLoginSucceeded(const QString &username)
@@ -65,6 +71,8 @@ void LoginPage::handleLoginSucceeded(const QString &username)
 
 
     ui->loginButton->setEnabled(true);
+    ui->errorLabel->clear();
+    ui->errorLabel->setVisible(false);
 
 
 

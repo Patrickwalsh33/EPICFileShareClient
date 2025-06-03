@@ -86,28 +86,6 @@
     <string>Create Account</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="navigateToHomeButton">
-   <property name="geometry">
-    <rect>
-     <x>400</x>
-     <y>550</y>
-     <width>400</width>
-     <height>80</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>28</pointsize>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: white; background-color: green; border-radius: 15px;</string>
-   </property>
-   <property name="text">
-    <string>Go to Home</string>
-   </property>
-  </widget>
  </widget>
  <resources/>
  <connections/>

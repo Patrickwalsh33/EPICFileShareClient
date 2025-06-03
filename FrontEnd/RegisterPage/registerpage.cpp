@@ -17,15 +17,19 @@ RegisterPage::RegisterPage(QWidget *parent) :
     ui(new Ui::RegisterPage) //creates ui object
 {
     ui->setupUi(this);
-    ui->errorLabel->setText(""); // this clears the error message initially
+    ui->errorLabel->clear();
+    ui->errorLabel->setVisible(false); // Hide error label initially
     
     // Initialize auth components
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
-
     userAuth = new UserAuthentication(passwordValidator, package1, user1, this);
 
-
+    // Connect signals
+    connect(userAuth, &UserAuthentication::registrationSucceeded,
+            this, &RegisterPage::onServerRegistrationSucceeded);
+    connect(userAuth, &UserAuthentication::registrationFailed,
+            this, &RegisterPage::onServerRegistrationFailed);
 }
 
 // Destructor
@@ -51,9 +55,11 @@ void RegisterPage::on_registerButton_clicked()
     if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
         ui->errorLabel->setStyleSheet("color: red");
+        ui->errorLabel->setVisible(true);
         return;
     }
-
+    ui->errorLabel->clear();
+    ui->errorLabel->setVisible(false);
 }
 
 void RegisterPage::onServerRegistrationSucceeded()
@@ -61,19 +67,18 @@ void RegisterPage::onServerRegistrationSucceeded()
     qDebug() << "Server registration succeeded";
 
     ui->registerButton->setEnabled(true);
+    ui->errorLabel->clear();
+    ui->errorLabel->setVisible(false);
 
-    QMessageBox::information(this, "Registration Successful",
-                             "Your account has been created successfully.\n"
-                             "You will now be redirected to the login page.");
-
-    LoginPage loginDialog(nullptr);
-    loginDialog.setAttribute(Qt::WA_DeleteOnClose);
-
+    // Create and show login page
+    LoginPage *loginDialog = new LoginPage(nullptr);
+    loginDialog->setAttribute(Qt::WA_DeleteOnClose);
+    
+    // Close the registration page
     this->accept();
-
-    loginDialog.exec();
-
-
+    
+    // Show the login page
+    loginDialog->exec();
 }
 
 void RegisterPage::onServerRegistrationFailed(const QString &error)
@@ -86,6 +91,7 @@ void RegisterPage::onServerRegistrationFailed(const QString &error)
     // Show error message
     ui->errorLabel->setText("Server registration failed: " + error);
     ui->errorLabel->setStyleSheet("color: red");
+    ui->errorLabel->setVisible(true);
 }
 
 
