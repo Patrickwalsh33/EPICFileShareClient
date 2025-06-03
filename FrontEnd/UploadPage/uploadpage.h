@@ -73,8 +73,8 @@ struct FileInfo {
     QByteArray originalData;
     QByteArray encryptedData;
     QByteArray encryptedFileNonce;
-    QByteArray encryptedDek;
-    QByteArray encryptedDekNonce;
+    QByteArray encryptedMetadata;
+    QByteArray metadataNonce;
     std::vector<unsigned char> dek;
     bool isEncrypted;
     ClickableFrame* displayBox;
@@ -83,6 +83,9 @@ struct FileInfo {
     QLabel* typeLabel;
     QLabel* statusLabel;
     size_t index;
+    QString uuid;
+    QString fileName;
+    QString mimeType;
 };
 
 //declaring upload class that inherits from QDialog
