@@ -10,22 +10,17 @@
 #include <iostream>
 #include "../../key_management/X3DHKeys/EphemeralKeyPair.h"
 #include "../../key_management/KEKManager.h"
+#include "../SessionManager/SessionManager.h"
 
-std::string userPackage = "my_secure_package";
-std::string userId = "alice";
+std::string userPackage = "leftovers.project";
+std::string userId = "tempUser";
 
-// Your KEK (Key Encryption Key)
-std::vector<unsigned char> kek = ;
-
-// Create KEKManager instance
 KEKManager kekManager(userPackage, userId);
 
 UploadPage::UploadPage(QWidget *parent) :
         QDialog(parent),
         ui(new Ui::UploadPage),
         uploader(new uploadManager(this)),
-        //sets initial selected file index to invalid value so that its clear
-        //no file is selected at the start
         selectedFileIndex(static_cast<size_t>(-1)) {
     ui->setupUi(this);
 
@@ -222,7 +217,19 @@ void UploadPage::on_encryptButton_clicked() {
     const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
     const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
 
-    std::vector<unsigned char> SenderPrivIDKey = kekManager.decryptStoredPrivateIdentityKey(kek);
+    // Get KEK from SessionManager
+    QByteArray kek = SessionManager::getInstance()->getDecryptedKEK();
+    if (kek.isEmpty()) {
+        QMessageBox::critical(this, "Encryption Error", "User session is invalid or KEK not found. Please log in again.");
+        return;
+    }
+
+    std::vector<unsigned char> kekVector(
+            reinterpret_cast<const unsigned char*>(kek.constData()),
+            reinterpret_cast<const unsigned char*>(kek.constData()) + kek.size()
+    );
+
+    std::vector<unsigned char> SenderPrivIDKey = kekManager.decryptStoredPrivateIdentityKey(kekVector);
     const unsigned char* senderId = SenderPrivIDKey.data();
 
 

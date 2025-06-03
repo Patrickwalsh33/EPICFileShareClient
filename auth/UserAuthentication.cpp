@@ -21,6 +21,7 @@
 #include <QSslConfiguration>
 #include <QNetworkReply>
 #include "keychain/keychain.h"
+#include "../FrontEnd/SessionManager/SessionManager.h"
 
 
 
@@ -255,6 +256,9 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         m_decryptedKekTemp = QByteArray(
                    reinterpret_cast<const char*>(tempdecryptedKEK.data()), tempdecryptedKEK.size());
 
+        // Store the KEK in SessionManager
+        SessionManager::getInstance()->setDecryptedKEK(m_decryptedKekTemp);
+
         sodium_memzero(tempdecryptedKEK.data(), tempdecryptedKEK.size());
         tempdecryptedKEK.clear();
         sodium_memzero(masterKeyOnLogin.data(), masterKeyOnLogin.size());
@@ -347,8 +351,7 @@ void UserAuthentication::handleChallengeResponse()
                     reinterpret_cast<const unsigned char*>(m_decryptedKekTemp.constData()),
                     reinterpret_cast<const unsigned char*>(m_decryptedKekTemp.constData()) + m_decryptedKekTemp.size()
                 );
-                sodium_memzero(m_decryptedKekTemp.data(), m_decryptedKekTemp.size());
-                m_decryptedKekTemp.clear();
+
                 unsigned char signature [crypto_sign_BYTES];
                 KeyEncryptor::EncryptedData identityEncrypted;
                 keychain::Error loadIdentityError;
@@ -414,6 +417,7 @@ void UserAuthentication::handleChallengeResponse()
 
 
 }
+
 bool UserAuthentication::submitSignedChallenge(const QString &username, const QByteArray &signature, const QByteArray &nonce) {
     qDebug() << "Submitting login for user:" << username;
 
@@ -483,6 +487,10 @@ void UserAuthentication::handleLoginResponse()
     qDebug() << "handleLoginResponse triggered.";
     if (currentReply->error() != QNetworkReply::NoError) {
         qDebug() << "Login Reply Error:" << currentReply->errorString();
+        // Clear KEK from SessionManager on login failure after challenge was passed
+        if (currentRequestType == Login) { // Check if this was a login attempt response
+            SessionManager::getInstance()->clearSessionData();
+        }
     } else {
         qDebug() << "Login Reply Success.";
     }
@@ -508,11 +516,15 @@ void UserAuthentication::handleLoginResponse()
         {
             QString errorMsg = "Login successful, but invalid JSON response received.";
             qWarning() << errorMsg;
+            // Clear KEK from SessionManager on login failure
+            SessionManager::getInstance()->clearSessionData();
             emit loginFailed(errorMsg);
         }
     } else {
         QString errorMsg = QString("Login failed: %1").arg(currentReply->errorString());
         qDebug() << errorMsg;
+        // Clear KEK from SessionManager on login failure
+        SessionManager::getInstance()->clearSessionData();
         emit loginFailed(errorMsg);
     }
 
@@ -522,6 +534,9 @@ void UserAuthentication::handleLoginResponse()
 
 QString UserAuthentication::getAccessToken() const {
     return m_accessToken;
+}
+QByteArray UserAuthentication::getDecryptedKekTemp() const{
+    return m_decryptedKekTemp;
 }
 
 void UserAuthentication::handleSslErrors(const QList<QSslError> &errors) {
@@ -537,6 +552,12 @@ void UserAuthentication::handleNetworkError(QNetworkReply::NetworkError error)
 
     QString errorString = currentReply->errorString();
     qDebug() << "Network error occurred during" << (currentRequestType == Challenge ? "challenge" : "login") << ":" << errorString;
+
+    // If the error occurs during the login step (after challenge/KEK retrieval)
+    // clear the KEK from session as login is not fully successful.
+    if (currentRequestType == Login) {
+        SessionManager::getInstance()->clearSessionData();
+    }
 
     if (currentRequestType == Challenge) {
         emit challengeFailed(errorString);
