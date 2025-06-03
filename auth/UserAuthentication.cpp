@@ -486,10 +486,30 @@ void UserAuthentication::handleLoginResponse()
     } else {
         qDebug() << "Login Reply Success.";
     }
-    if (currentReply->error() == QNetworkReply::NoError) {
+    if (currentReply->error() == QNetworkReply::NoError)
+    {
         QByteArray response = currentReply->readAll();
-        qDebug() << "Login successful. Server response:" << response;
-        emit loginSucceeded(m_currentUsername);
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+        if (jsonDoc.isObject())
+        {
+            QJsonObject jsonObj = jsonDoc.object();
+            if (jsonObj.contains("access_token"))
+            {
+                QString accessToken = jsonObj["access_token"].toString();
+                qDebug() << "Access Token:" << accessToken;
+
+                m_accessToken = accessToken;
+                qDebug() << "Access token stored in member variable.";
+
+                emit loginSucceeded(m_currentUsername);
+            }else
+                qDebug() << "Login successful. but access_token not found in response" << response;
+        }else
+        {
+            QString errorMsg = "Login successful, but invalid JSON response received.";
+            qWarning() << errorMsg;
+            emit loginFailed(errorMsg);
+        }
     } else {
         QString errorMsg = QString("Login failed: %1").arg(currentReply->errorString());
         qDebug() << errorMsg;
@@ -498,6 +518,10 @@ void UserAuthentication::handleLoginResponse()
 
     currentReply->deleteLater();
     currentReply = nullptr;
+}
+
+QString UserAuthentication::getAccessToken() const {
+    return m_accessToken;
 }
 
 void UserAuthentication::handleSslErrors(const QList<QSslError> &errors) {
