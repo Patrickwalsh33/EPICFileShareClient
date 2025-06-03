@@ -10,7 +10,6 @@
 #include "keychain/keychain.h"
 #include "../../key_management/KeyEncryptor.h"
 
-// Print binary data as a hex string with a label
 void print_hex(const char* label, const unsigned char* data, size_t len);
 
 

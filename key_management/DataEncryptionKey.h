@@ -4,14 +4,14 @@
 
 class DataEncryptionKey {
 public:
-    DataEncryptionKey();  // generates random key
-    ~DataEncryptionKey(); // clears key from memory
+    DataEncryptionKey();
+    ~DataEncryptionKey();
 
     [[nodiscard]] const std::vector<unsigned char>& getKey() const;
 
 private:
     std::vector<unsigned char> key;
-    void secureZero(); // internal cleanup
+    void secureZero();
 };
 
 
