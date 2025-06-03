@@ -78,6 +78,8 @@ add_executable(MyQtApp
         FrontEnd/RecievedFiles/recievedfilespage.h
         FrontEnd/RecievedFiles/recievedfilespage.ui
         X3DH/X3DH_reciever.cpp
+        auth/RateLimiter.cpp
+        auth/RateLimiter.h
 )
 
 target_include_directories(MyQtApp PRIVATE
