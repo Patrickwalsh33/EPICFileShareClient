@@ -2,6 +2,7 @@
 #define DECRYPTIONMANAGER_H
 
 #include <QByteArray>
+#include <QString> // Added for return type
 #include "../../X3DH/X3DH_shared.h" // Path relative to DecryptionManager.h
 #include "../../crypto/crypto_utils.h" // Path relative to DecryptionManager.h
 
@@ -25,6 +26,19 @@ public:
         const ReceivedFileInfo& fileInfo,
         const QByteArray& receiverIdentityPrivEd,
         const QByteArray& receiverSignedPrekeyPriv
+    );
+
+    /**
+     * @brief Decrypts the provided encrypted metadata using the given key and nonce.
+     * @param encryptedMetadata The encrypted metadata blob.
+     * @param metadataNonce The nonce used for encrypting the metadata.
+     * @param decryptionKey The symmetric key (derived from X3DH) to use for decryption.
+     * @return QString containing the decrypted JSON metadata, or an empty QString on failure.
+     */
+    QString decryptFileMetadata(
+        const QByteArray& encryptedMetadata,
+        const QByteArray& metadataNonce,
+        const QByteArray& decryptionKey
     );
 
 private:

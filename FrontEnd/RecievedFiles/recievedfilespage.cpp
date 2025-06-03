@@ -8,6 +8,8 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <sodium.h>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 // Key Management Includes
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
@@ -90,39 +92,59 @@ void RecievedFilesPage::on_getFilesButton_clicked()
     qDebug() << "Test Sender Ephemeral Public Key (first 5 bytes):" << senderEphemeralPub.left(5).toHex();
     qDebug() << "Test Sender Identity Public Key (first 5 bytes):" << senderIdentityPubEd.left(5).toHex();
 
+    // Dummy metadata for testing - in a real scenario, this is fetched from the server
+    // For this test, we will create a dummy JSON, encrypt it with a *known* key
+    // (e.g., the sender's derived X3DH key if we were simulating that fully here, or just a placeholder).
+    // To keep it simple for *this specific step* of plumbing the decryption call,
+    // we'll use very basic placeholder byte arrays for encryptedMetadata and metadataNonce.
+    // The actual test of decryption correctness will come when real encrypted data is processed.
+
+    QByteArray placeholderEncryptedMetadata(60 + crypto_aead_chacha20poly1305_ietf_ABYTES, 'E'); // Placeholder for ~60 bytes of plaintext + MAC
+    QByteArray placeholderMetadataNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES, 'N');
+
+    // Create file 1
     ReceivedFileInfo file1;
     file1.fileName = "Document1.enc";
     file1.sender = "UserA";
     file1.fileSize = 1024 * 5;
     file1.isDecrypted = false;
-    file1.uuid = "uuid1";
+    file1.uuid = "uuid1-doc";
     file1.senderEphemeralPublicKey = senderEphemeralPub;
     file1.senderIdentityPublicKeyEd = senderIdentityPubEd;
+    // --- Dummy Encrypted Metadata & Nonce ---
+    file1.encryptedMetadata = placeholderEncryptedMetadata; 
+    file1.metadataNonce = placeholderMetadataNonce;
+    // --- End Dummy ---
     file1.index = receivedFiles.size();
     receivedFiles.append(file1);
     createFileBox(receivedFiles.last());
 
-    // ... (file2 and file3 setup similar to file1, using the same sender keys for test)
+    // Create file 2
     ReceivedFileInfo file2;
     file2.fileName = "Picture.jpg.enc";
     file2.sender = "UserB";
     file2.fileSize = 1024 * 1024 * 2;
     file2.isDecrypted = false;
-    file2.uuid = "uuid2";
-    file2.senderEphemeralPublicKey = senderEphemeralPub;
+    file2.uuid = "uuid2-pic";
+    file2.senderEphemeralPublicKey = senderEphemeralPub; 
     file2.senderIdentityPublicKeyEd = senderIdentityPubEd;
+    file2.encryptedMetadata = QByteArray(80 + crypto_aead_chacha20poly1305_ietf_ABYTES, 'P'); // Different placeholder
+    file2.metadataNonce = placeholderMetadataNonce; // Can reuse nonce for dummy data if data is different
     file2.index = receivedFiles.size();
     receivedFiles.append(file2);
     createFileBox(receivedFiles.last());
 
+    // Create file 3
     ReceivedFileInfo file3;
     file3.fileName = "Archive.zip.enc";
     file3.sender = "UserC";
     file3.fileSize = 1024 * 1024 * 15;
     file3.isDecrypted = false;
-    file3.uuid = "uuid3";
+    file3.uuid = "uuid3-arc";
     file3.senderEphemeralPublicKey = senderEphemeralPub;
     file3.senderIdentityPublicKeyEd = senderIdentityPubEd;
+    file3.encryptedMetadata = QByteArray(70 + crypto_aead_chacha20poly1305_ietf_ABYTES, 'A'); // Yet another placeholder
+    file3.metadataNonce = placeholderMetadataNonce;
     file3.index = receivedFiles.size();
     receivedFiles.append(file3);
     createFileBox(receivedFiles.last());
@@ -228,53 +250,85 @@ static SignedPreKeyPair testReceiverSignedPreKeys(testReceiverIdentityKeys.getPr
 void RecievedFilesPage::on_decryptButton_clicked()
 {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size() || receivedFiles[selectedFileIndex].isDecrypted) {
-        qDebug() << "Decrypt button clicked, but no valid file selected or file already decrypted.";
+        qDebug() << "Decrypt button: No valid file selected or file already processed for decryption.";
         return;
     }
 
     ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
-    qDebug() << "Attempting to decrypt file:" << selectedFile.fileName;
-    
-    // Use the statically generated receiver keys
-    QByteArray receiverIdentityPrivEd_raw = toQByteArray(testReceiverIdentityKeys.getPrivateKey());
-    QByteArray receiverSignedPrekeyPriv_raw = toQByteArray(testReceiverSignedPreKeys.getPrivateKey());
+    qDebug() << "Attempting to process file for decryption:" << selectedFile.fileName;
 
-    qDebug() << "Test Receiver Identity Private Key (first 5 bytes):" << receiverIdentityPrivEd_raw.left(5).toHex();
-    qDebug() << "Test Receiver Signed PreKey Private Key (first 5 bytes):" << receiverSignedPrekeyPriv_raw.left(5).toHex();
+    if (selectedFile.derivedDecryptionKey.isEmpty()) { // Check if key derivation was already attempted and failed or not done
+        qDebug() << "Step 1: Deriving X3DH key for" << selectedFile.fileName;
+        QByteArray receiverIdentityPrivEd_raw = toQByteArray(testReceiverIdentityKeys.getPrivateKey());
+        QByteArray receiverSignedPrekeyPriv_raw = toQByteArray(testReceiverSignedPreKeys.getPrivateKey());
 
-    if (selectedFile.senderEphemeralPublicKey.isEmpty() || selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
-        QMessageBox::critical(this, "Decryption Error", "Sender public keys are missing for the selected file.");
-        qDebug() << "Decryption Error: Sender public keys missing for file:" << selectedFile.fileName;
-        return;
+        if (selectedFile.senderEphemeralPublicKey.isEmpty() || selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
+            QMessageBox::critical(this, "Decryption Error", "Sender public keys are missing for the selected file.");
+            return;
+        }
+
+        DecryptionManager decryptionManager;
+        selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
+            selectedFile, 
+            receiverIdentityPrivEd_raw, 
+            receiverSignedPrekeyPriv_raw
+        );
+
+        if (selectedFile.derivedDecryptionKey.isEmpty()) {
+            QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
+            return; // Stop if key derivation failed
+        }
+        qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName << "Key (first 5 bytes):" << selectedFile.derivedDecryptionKey.left(5).toHex();
+    } else {
+         qDebug() << "X3DH key already available for:" << selectedFile.fileName;
     }
 
-    DecryptionManager decryptionManager;
-    QByteArray derivedKey = decryptionManager.deriveFileDecryptionKey(
-        selectedFile, 
-        receiverIdentityPrivEd_raw, 
-        receiverSignedPrekeyPriv_raw
+    // Step 2: Decrypt Metadata
+    qDebug() << "Step 2: Decrypting metadata for" << selectedFile.fileName;
+    DecryptionManager decryptionManager; // Can re-use or make manager member if preferred
+    selectedFile.decryptedMetadataJsonString = decryptionManager.decryptFileMetadata(
+        selectedFile.encryptedMetadata,
+        selectedFile.metadataNonce,
+        selectedFile.derivedDecryptionKey
     );
 
-    if (derivedKey.isEmpty()) {
-        QMessageBox::critical(this, "Decryption Failed", "Could not derive decryption key for " + selectedFile.fileName);
-        qDebug() << "Decryption failed for file:" << selectedFile.fileName;
-        // The actual X3DH error would have been printed by DecryptionManager or X3DH_receiver.cpp
-        return;
+    if (selectedFile.decryptedMetadataJsonString.isEmpty()) {
+        QMessageBox::warning(this, "Metadata Decryption Failed", 
+                             "Could not decrypt metadata for " + selectedFile.fileName + ". It might be corrupted, or keys might not match the encrypted data.");
+        // Even if metadata decryption fails, we might still mark the key as derived and allow download attempt later
+        // For now, let's not change isDecrypted status if only metadata fails, but key is derived.
+        // The definition of "isDecrypted" might need refinement (key derived vs metadata decrypted vs content decrypted)
+        qDebug() << "Metadata decryption failed for:" << selectedFile.fileName;
+    } else {
+        qDebug() << "Successfully decrypted metadata for:" << selectedFile.fileName;
+        qDebug() << "Decrypted Metadata JSON:" << selectedFile.decryptedMetadataJsonString;
+        // Optionally parse and use metadata
+        QJsonDocument doc = QJsonDocument::fromJson(selectedFile.decryptedMetadataJsonString.toUtf8());
+        if (!doc.isNull() && doc.isObject()) {
+            QJsonObject jsonObj = doc.object();
+            qDebug() << "Parsed metadata - UUID:" << jsonObj.value("uuid").toString() 
+                     << ", Filename:" << jsonObj.value("filename").toString();
+            // You could update UI elements here based on decrypted metadata if needed.
+        } else {
+            qDebug() << "Failed to parse decrypted metadata as JSON.";
+        }
     }
 
-    qDebug() << "Successfully derived decryption key for:" << selectedFile.fileName;
-    qDebug() << "Derived Key (first 5 bytes):" << derivedKey.left(5).toHex();
-    selectedFile.derivedDecryptionKey = derivedKey;
-    selectedFile.isDecrypted = true; 
-
-    if (selectedFile.displayBox) {
-        selectedFile.statusLabel->setText("Status: Decrypted");
-        selectedFile.statusLabel->setStyleSheet("color: #28a745;");
-        selectedFile.displayBox->setStyleSheet("QFrame { background-color: #d4edda; border: 2px solid #007bff; border-radius: 4px; }");
+    // For now, we'll consider the file "decrypted" if the key derivation was successful,
+    // as the metadata might be optional or handled differently. User can attempt download.
+    selectedFile.isDecrypted = !selectedFile.derivedDecryptionKey.isEmpty();
+ 
+    if (selectedFile.isDecrypted) {
+         if (selectedFile.displayBox) {
+            selectedFile.statusLabel->setText("Status: Decrypted (Key Ready)"); // Update status
+            selectedFile.statusLabel->setStyleSheet("color: #28a745;");
+            selectedFile.displayBox->setStyleSheet("QFrame { background-color: #d4edda; border: 2px solid #007bff; border-radius: 4px; }");
+        }
+        QMessageBox::information(this, "Processing Complete", 
+                                 selectedFile.fileName + " has been processed. X3DH key is derived. Metadata decryption attempted.");
     }
     
     updateButtonStates();
-    QMessageBox::information(this, "Decryption Processed", selectedFile.fileName + " has been processed for decryption. Key derived.");
 }
 
 void RecievedFilesPage::on_downloadButton_clicked()

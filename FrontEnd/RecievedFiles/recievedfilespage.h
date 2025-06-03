@@ -29,6 +29,8 @@ struct ReceivedFileInfo {
     QByteArray senderIdentityPublicKeyEd;  // ID_sender_pub_Ed (fetched or part of pre-bundle)
     QByteArray derivedDecryptionKey;     // The final key for decrypting file content/metadata
 
+    QString decryptedMetadataJsonString; // To store the decrypted metadata
+
     bool isDecrypted = false;       // Status: if derivedDecryptionKey is available and metadata potentially decrypted
     bool isDownloaded = false;
     int index; // To identify the file in the QVector
