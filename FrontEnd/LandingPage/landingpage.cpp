@@ -48,15 +48,3 @@ void LandingPage::on_navigateToRegisterButton_clicked()
     
     registerDialog.exec(); // Show RegisterPage modally
 }
-
-void LandingPage::on_navigateToHomeButton_clicked()
-{
-    qDebug() << "navigateToHomeButton_clicked on LandingPage";
-    this->accept(); // Close current LandingPage
-    
-    // HomePage requires a username. For now, we pass a placeholder.
-    // You might want to establish a guest session or a different HomePage constructor.
-    HomePage *homePage = new HomePage("NavigatingDirectlyToHome", nullptr); 
-    homePage->setAttribute(Qt::WA_DeleteOnClose);
-    homePage->exec();
-}
