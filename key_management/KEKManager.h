@@ -34,6 +34,7 @@ public:
     KeyEncryptor keyEncryptor_;
 
     std::vector<unsigned char> decryptStoredPrivateIdentityKey(const std::vector<unsigned char>& kek);
+    std::vector<unsigned char> decryptStoredSignedPreKey(const std::vector<unsigned char>& kek);
 
 
 

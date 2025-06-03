@@ -14,11 +14,20 @@
 // Key Management Includes
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../../key_management/X3DHKeys/EphemeralKeyPair.h"
-#include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
+#include "../../key_management/KEKManager.h"
+#include "../SessionManager/SessionManager.h"
 
 // Helper function to convert std::vector<unsigned char> to QByteArray
 QByteArray toQByteArray(const std::vector<unsigned char>& vec) {
     return QByteArray(reinterpret_cast<const char*>(vec.data()), vec.size());
+}
+
+// Helper function to convert QByteArray to std::vector<unsigned char>
+std::vector<unsigned char> toStdVector(const QByteArray& qba) {
+    return std::vector<unsigned char>(
+        reinterpret_cast<const unsigned char*>(qba.constData()),
+        reinterpret_cast<const unsigned char*>(qba.constData()) + qba.size()
+    );
 }
 
 RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
@@ -67,8 +76,7 @@ bool RecievedFilesPage::eventFilter(QObject *watched, QEvent *event)
     return QDialog::eventFilter(watched, event);
 }
 
-// Declare static keys for the sender so they are consistent for all dummy files
-// In a real scenario, these would be specific to each sender/message instance.
+// Sender keys remain static for test data generation
 static IdentityKeyPair testSenderIdentityKeys;
 static EphemeralKeyPair testSenderEphemeralKeys;
 
@@ -241,12 +249,6 @@ void RecievedFilesPage::updateButtonStates() {
     }
 }
 
-// Declare static keys for the receiver for consistent testing
-static IdentityKeyPair testReceiverIdentityKeys;
-// The signed prekey depends on the identity key, so it must be created after.
-// We can initialize it as a pointer and create it on first use or make it static too if IdentityKey is static.
-static SignedPreKeyPair testReceiverSignedPreKeys(testReceiverIdentityKeys.getPrivateKey());
-
 void RecievedFilesPage::on_decryptButton_clicked()
 {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size() || receivedFiles[selectedFileIndex].isDecrypted) {
@@ -257,10 +259,46 @@ void RecievedFilesPage::on_decryptButton_clicked()
     ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
     qDebug() << "Attempting to process file for decryption:" << selectedFile.fileName;
 
-    if (selectedFile.derivedDecryptionKey.isEmpty()) { // Check if key derivation was already attempted and failed or not done
-        qDebug() << "Step 1: Deriving X3DH key for" << selectedFile.fileName;
-        QByteArray receiverIdentityPrivEd_raw = toQByteArray(testReceiverIdentityKeys.getPrivateKey());
-        QByteArray receiverSignedPrekeyPriv_raw = toQByteArray(testReceiverSignedPreKeys.getPrivateKey());
+    if (selectedFile.derivedDecryptionKey.isEmpty()) {
+        qDebug() << "Step 1: Retrieving receiver keys and deriving X3DH key for" << selectedFile.fileName;
+
+        // --- KEK Retrieval --- 
+        QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
+        if (kek_qba.isEmpty()) {
+            QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
+            qDebug() << "Failed to retrieve KEK from SessionManager.";
+            return;
+        }
+        qDebug() << "Successfully retrieved KEK from SessionManager.";
+        std::vector<unsigned char> kekVector = toStdVector(kek_qba);
+        // --- End KEK Retrieval ---
+
+        std::string userPackage = "leftovers.project"; 
+        std::string userId = "tempUser"; 
+        KEKManager kekManager(userPackage, userId);
+
+        QByteArray receiverIdentityPrivEd_qba;
+        QByteArray receiverSignedPrekeyPriv_qba;
+
+        try {
+            std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
+            receiverIdentityPrivEd_qba = toQByteArray(receiverIdPrivVec);
+            qDebug() << "Retrieved Receiver Identity Private Key (first 5 bytes):" << receiverIdentityPrivEd_qba.left(5).toHex();
+
+            std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
+            receiverSignedPrekeyPriv_qba = toQByteArray(receiverSpkPrivVec);
+            qDebug() << "Retrieved Receiver Signed PreKey Private Key (first 5 bytes):" << receiverSignedPrekeyPriv_qba.left(5).toHex();
+
+        } catch (const std::runtime_error& e) {
+            QMessageBox::critical(this, "Key Retrieval Error", "Failed to retrieve receiver keys from keychain: " + QString::fromUtf8(e.what()));
+            qDebug() << "Key Retrieval Error:" << e.what();
+            return;
+        }
+        
+        if (receiverIdentityPrivEd_qba.isEmpty() || receiverSignedPrekeyPriv_qba.isEmpty()) {
+             QMessageBox::critical(this, "Key Retrieval Error", "One or more receiver private keys are empty after retrieval.");
+            return;
+        }
 
         if (selectedFile.senderEphemeralPublicKey.isEmpty() || selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
             QMessageBox::critical(this, "Decryption Error", "Sender public keys are missing for the selected file.");
@@ -270,13 +308,13 @@ void RecievedFilesPage::on_decryptButton_clicked()
         DecryptionManager decryptionManager;
         selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
             selectedFile, 
-            receiverIdentityPrivEd_raw, 
-            receiverSignedPrekeyPriv_raw
+            receiverIdentityPrivEd_qba, 
+            receiverSignedPrekeyPriv_qba
         );
 
         if (selectedFile.derivedDecryptionKey.isEmpty()) {
             QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
-            return; // Stop if key derivation failed
+            return;
         }
         qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName << "Key (first 5 bytes):" << selectedFile.derivedDecryptionKey.left(5).toHex();
     } else {
