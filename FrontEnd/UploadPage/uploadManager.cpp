@@ -126,8 +126,7 @@ void uploadManager::handleKeysReceived()
         QByteArray responseData = currentReply->readAll();
         qDebug() << "Keys received:" << responseData;
         qDebug() << "Recipient keys received successfully. Size:" << responseData.size();
-        // Optionally, you can print part of the data for debugging if it's not too large or sensitive
-        // qDebug() << "Data (first 100 bytes):" << responseData.left(100);
+
         emit recipientKeysReceived(responseData);
     } else {
         QString errorMsg = currentReply->errorString();
