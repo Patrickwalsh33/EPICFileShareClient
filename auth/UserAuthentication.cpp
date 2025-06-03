@@ -212,6 +212,11 @@ bool UserAuthentication::generateAndRegisterX3DHKeys(const QString& username, co
 }
 
 bool UserAuthentication::loginUser(const QString& username, const QString& qpassword, QString& errorMsg) {
+
+    if(!rateLimiter.canAttemptLogin()){
+        errorMsg =  "Too many attempts. Wait 5 minutes";
+        return false;
+    }
     std::vector<unsigned char> masterKeyOnLogin;
 
     std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
@@ -502,6 +507,7 @@ void UserAuthentication::handleLoginResponse()
         }
     } else {
         qDebug() << "Login Reply Success.";
+        rateLimiter.loginSuccess();
     }
     if (currentReply->error() == QNetworkReply::NoError)
     {
