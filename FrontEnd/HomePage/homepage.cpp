@@ -22,28 +22,28 @@ HomePage::~HomePage() {
     delete ui;
 }
 
-//event handler for profile button
+//slot for profile button. basically qt better version of event handler
 void HomePage::on_profileButton_clicked() {
     ProfilePage *profilePage = new ProfilePage(currentUsername, this); //creates new profilePage dialog
     profilePage->setAttribute(Qt::WA_DeleteOnClose); //auto deletes on close
     profilePage->exec();  
 }
 
-//event handler for upload button
+//slot for upload button
 void HomePage::on_uploadButton_clicked() {
     UploadPage *uploadPage = new UploadPage(this); 
     uploadPage->setAttribute(Qt::WA_DeleteOnClose);
     uploadPage->exec();
 }
 
-//event handler for sent files button
+//slot for sent files button
 void HomePage::on_filesSentButton_clicked() {
     SentFilesPage *sentFilesPage = new SentFilesPage(this);
     sentFilesPage->setAttribute(Qt::WA_DeleteOnClose);
     sentFilesPage->exec();
 }
 
-//event handler for received files button
+//slot for received files button
 void HomePage::on_filesReceivedButton_clicked() {
     RecievedFilesPage *recievedFilesPage = new RecievedFilesPage(this);
     recievedFilesPage->setAttribute(Qt::WA_DeleteOnClose);
