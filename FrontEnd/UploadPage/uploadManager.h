@@ -7,18 +7,22 @@
 #include <QSslError>
 #include <QNetworkReply>
 
+class UserAuthentication; // Forward declaration to avoid circular dependency
+
 class uploadManager : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit uploadManager(QObject *parent = nullptr);
+    explicit uploadManager(UserAuthentication* userAuth, QObject *parent = nullptr);
     ~uploadManager();
 
     void setServerUrl(const QString &url);
-    bool uploadFileServer(const QByteArray &fileData, const QUuid &uuid, const QString &jwtToken);
+    bool uploadFileServer(const QByteArray &fileData, const QUuid &uuid);
     bool requestRecipientKeys(const QString &username);
-    bool uploadFileShareRequest(const QByteArray &metadata, const QByteArray &ephemeralKey, const QString &jwtToken, const QByteArray &en_file_metadata_nonce);
+    bool uploadFileShareRequest(const QByteArray &metadata, const QByteArray &ephemeralKey, const QByteArray &en_file_metadata_nonce);
+    UserAuthentication* m_userAuth;
+
 
 signals:
     void uploadSucceeded(const QByteArray &EncryptedDek);

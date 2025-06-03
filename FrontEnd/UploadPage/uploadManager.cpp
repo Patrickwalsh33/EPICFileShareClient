@@ -9,9 +9,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include "../../auth/UserAuthentication.h"
 
 
-uploadManager::uploadManager(QObject *parent) : QObject(parent),
+uploadManager::uploadManager(UserAuthentication* userAuth, QObject *parent) : QObject(parent),
+    m_userAuth(userAuth),
    networkManager(new QNetworkAccessManager(this)),
    currentReply(nullptr)
 {
@@ -31,8 +33,9 @@ void uploadManager::setServerUrl(const QString &url) {
     serverUrl = url;
 }
 
-bool uploadManager::uploadFileServer(const QByteArray&fileData, const QUuid &uuid, const QString &jwtToken) {
+bool uploadManager::uploadFileServer(const QByteArray&fileData, const QUuid &uuid) {
 
+    QString jwtToken = m_userAuth->getAccessToken();
     qDebug() << "Uploading file.";
     if (fileData.isEmpty()) {
         emit uploadFailed("File data is empty.");
@@ -45,7 +48,8 @@ bool uploadManager::uploadFileServer(const QByteArray&fileData, const QUuid &uui
     }
 
     QNetworkRequest request{QUrl(serverUrl)}; // creates a QNetworkRequest object that will be used to make a HTTPS request
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream"); //tells the server that we are sending binary data
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
+    //tells the server that we are sending binary data
     request.setRawHeader("X-File-UUID", uuid.toByteArray());
     request.setRawHeader("Authorization", "Bearer " + jwtToken.toUtf8());
     request.setSslConfiguration(QSslConfiguration::defaultConfiguration());
@@ -103,7 +107,8 @@ bool uploadManager::requestRecipientKeys(const QString &username) {
 
 }
 
-bool uploadManager::uploadFileShareRequest(const QByteArray &metadata, const QByteArray &ephemeralKey, const QString &jwtToken, const QByteArray &en_file_metadata_nonce) {
+bool uploadManager::uploadFileShareRequest(const QByteArray &metadata, const QByteArray &ephemeralKey, const QByteArray &en_file_metadata_nonce) {
+    QString jwtToken = m_userAuth->getAccessToken();
     qDebug() << "Initiating file share request.";
 
     if (serverUrl.isEmpty()) {
