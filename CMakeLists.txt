@@ -78,6 +78,10 @@ add_executable(MyQtApp
         FrontEnd/RecievedFiles/recievedfilespage.h
         FrontEnd/RecievedFiles/recievedfilespage.ui
         X3DH/X3DH_reciever.cpp
+        Testing/authenticationTests.cpp
+        Testing/authenticationTests.h
+        Testing/networkTests.cpp
+        Testing/networkTests.h
         auth/RateLimiter.cpp
         auth/RateLimiter.h
         Backend/Decryption/DecryptionManager.cpp
