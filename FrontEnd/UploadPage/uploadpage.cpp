@@ -8,6 +8,17 @@
 #include "../../crypto/crypto_utils.h"
 #include "../../X3DH/X3DH_shared.h"
 #include <iostream>
+#include "../../key_management/X3DHKeys/EphemeralKeyPair.h"
+#include "../../key_management/KEKManager.h"
+
+std::string userPackage = "my_secure_package";
+std::string userId = "alice";
+
+// Your KEK (Key Encryption Key)
+std::vector<unsigned char> kek = ;
+
+// Create KEKManager instance
+KEKManager kekManager(userPackage, userId);
 
 UploadPage::UploadPage(QWidget *parent) :
         QDialog(parent),
@@ -207,8 +218,25 @@ void UploadPage::on_encryptButton_clicked() {
     );
 
 
+    EphemeralKeyPair ephemeralKeyPair;
+    const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
+    const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
+
+    std::vector<unsigned char> SenderPrivIDKey = kekManager.decryptStoredPrivateIdentityKey(kek);
+    const unsigned char* senderId = SenderPrivIDKey.data();
+
+
+
+
     unsigned char sharedSecret[crypto_generichash_BYTES]; // 32 bytes
-    bool success = run_x3dh(sharedSecret, sizeof(sharedSecret));
+    bool success = x3dh_sender_derive_shared_secret(
+            sharedSecret,
+            sizeof(sharedSecret),
+            senderEphemeralPrivateKey,
+            senderId,
+            receiverIdentityPubEd[crypto_sign_PUBLICKEYBYTES],
+            receiverSignedPrekeyPub[crypto_scalarmult_BYTES],
+            receiverSignedPrekeySig[crypto_sign_BYTES]);
 
     unsigned char derivedKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES]; // 32 bytes
     const char context[8] = "X3DHKEY";
