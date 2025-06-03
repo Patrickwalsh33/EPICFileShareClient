@@ -14,6 +14,12 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QDebug>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QSslSocket>
+#include <QSslConfiguration>
+#include <QNetworkReply>
 #include "keychain/keychain.h"
 
 
@@ -201,10 +207,6 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
 
 
-
-
-
-
     //validates username
     if (!validator->validateUsername(username, errorMsg)) {
         return false;
@@ -250,16 +252,23 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         tempdecryptedKEK = kekManager->decryptKEK(masterKeyOnLogin, encryptedKEKkeychain.ciphertext, encryptedKEKkeychain.nonce);
         qDebug()<< "Decrypted KEK on login: " << tempdecryptedKEK;
 
+        m_decryptedKekTemp = QByteArray(
+                   reinterpret_cast<const char*>(tempdecryptedKEK.data()), tempdecryptedKEK.size());
+
+        sodium_memzero(tempdecryptedKEK.data(), tempdecryptedKEK.size());
+        tempdecryptedKEK.clear();
+        sodium_memzero(masterKeyOnLogin.data(), masterKeyOnLogin.size());
+        masterKeyOnLogin.clear();
+
     } catch (const std::exception& e) {
         qDebug() << "error decrypting kek " << e.what();
         return false;
     }
 
     qDebug() << "Login attempt for user:" << username;
+
     
-    // TODO: Check credentials against database
-    
-    return true;
+    return requestChallenge(username);
 }
 
 
@@ -269,13 +278,15 @@ void UserAuthentication::setServerUrl(const QString &url) {
 }
 
 bool UserAuthentication::requestChallenge(const QString &username) {
+    setServerUrl("https://leftovers.gobbler.info");
     qDebug() << "Requesting challenge for user:" << username;
+    m_currentUsername = username;
 
     if (username.isEmpty()) {
         emit challengeFailed("Username cannot be empty.");
         return false;
     }
-
+    qDebug() << "username is set now sending request to " << serverUrl;
     if (serverUrl.isEmpty()) {
         emit challengeFailed("Server URL is not set.");
         return false;
@@ -291,72 +302,21 @@ bool UserAuthentication::requestChallenge(const QString &username) {
 
     // Create network request
     QNetworkRequest request(url);
+    qDebug() << "Network request:" << request.url();
 
     // SSL configuration
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     request.setSslConfiguration(sslConfig);
 
     // Send GET request
     currentRequestType = Challenge;
     currentReply = networkManager->get(request);
+    qDebug() << "Challenge request sent";
+
 
     // Connect signals
     connect(currentReply, &QNetworkReply::finished,
             this, &UserAuthentication::handleChallengeResponse);
-    connect(currentReply, &QNetworkReply::sslErrors,
-            this, &UserAuthentication::handleSslErrors);
-    connect(currentReply, &QNetworkReply::errorOccurred,
-            this, &UserAuthentication::handleNetworkError);
-
-    return true;
-}
-
-bool UserAuthentication::submitLogin(const QString &username, const QByteArray &signature, const QByteArray &nonce) {
-    qDebug() << "Submitting login for user:" << username;
-
-    if (username.isEmpty()) {
-        emit loginFailed("Username cannot be empty.");
-        return false;
-    }
-
-    if (signature.isEmpty() || nonce.isEmpty()) {
-        emit loginFailed("Signature and nonce are required.");
-        return false;
-    }
-
-    if (serverUrl.isEmpty()) {
-        emit loginFailed("Server URL is not set.");
-        return false;
-    }
-
-    // Create JSON payload
-    QJsonObject loginData;
-    loginData["username"] = username;
-    loginData["signature"] = QString::fromLatin1(signature.toBase64());
-    loginData["nonce"] = QString::fromLatin1(nonce.toBase64());
-
-    QJsonDocument jsonDoc(loginData);
-    QByteArray jsonData = jsonDoc.toJson();
-
-    qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Indented);
-
-    // Create network request
-    QNetworkRequest request(QUrl(serverUrl + "/auth/login"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    // SSL configuration
-    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
-    request.setSslConfiguration(sslConfig);
-
-    // Send POST request
-    currentRequestType = Login;
-    currentReply = networkManager->post(request, jsonData);
-
-    // Connect signals
-    connect(currentReply, &QNetworkReply::finished,
-            this, &UserAuthentication::handleLoginResponse);
     connect(currentReply, &QNetworkReply::sslErrors,
             this, &UserAuthentication::handleSslErrors);
     connect(currentReply, &QNetworkReply::errorOccurred,
@@ -382,20 +342,13 @@ void UserAuthentication::handleChallengeResponse()
                 qDebug() << "Received nonce (Base64):" << nonceBase64;
 
 
-                QByteArray decryptedKekQByteArray = currentReply->property("decryptedKek").toByteArray();
-                if (decryptedKekQByteArray.isEmpty()) {
-                    qCritical() << "Error: Decrypted KEK not found in reply property. Cannot decrypt identity key.";
-                    emit challengeFailed("Internal error: KEK not available from reply.");
-                    currentReply->deleteLater();
-                    currentReply = nullptr;
-                    return;
-                }
+
                 std::vector<unsigned char> decryptedKekVector(
-                    reinterpret_cast<const unsigned char*>(decryptedKekQByteArray.constData()),
-                    reinterpret_cast<const unsigned char*>(decryptedKekQByteArray.constData()) + decryptedKekQByteArray.size()
+                    reinterpret_cast<const unsigned char*>(m_decryptedKekTemp.constData()),
+                    reinterpret_cast<const unsigned char*>(m_decryptedKekTemp.constData()) + m_decryptedKekTemp.size()
                 );
-                sodium_memzero(decryptedKekQByteArray.data(), decryptedKekQByteArray.size());
-                decryptedKekQByteArray.clear();
+                sodium_memzero(m_decryptedKekTemp.data(), m_decryptedKekTemp.size());
+                m_decryptedKekTemp.clear();
                 unsigned char signature [crypto_sign_BYTES];
                 KeyEncryptor::EncryptedData identityEncrypted;
                 keychain::Error loadIdentityError;
@@ -405,7 +358,7 @@ void UserAuthentication::handleChallengeResponse()
                     qCritical() << "Failed to load encrypted identity key:" << e.what();
                     emit challengeFailed(QString("Failed to load identity key: %1").arg(e.what()));
                     // Wipe KEK even on error
-                    sodium_memzero(decryptedKekQByteArray.data(), decryptedKekQByteArray.size());
+                    sodium_memzero(m_decryptedKekTemp.data(), m_decryptedKekTemp.size());
                     return;
                 }
 
@@ -431,13 +384,21 @@ void UserAuthentication::handleChallengeResponse()
                     signature,
                     NULL,
                     reinterpret_cast<const unsigned char*>(nonceBytes.constData()),
-                    nonceBase64.length(),
+                    nonceBytes.size(),
                     decryptedIdentityPrivateKeyBytes.data()
                     );
                 if (result != 0){
                     throw std::runtime_error("Ed25519 signing failed.");
                 }
-                emit challengeReceived(nonceBytes);
+                sodium_memzero(decryptedIdentityPrivateKeyBytes.data(), decryptedIdentityPrivateKeyBytes.size());
+                decryptedIdentityPrivateKeyBytes.clear();
+
+                QByteArray signatureBytes(reinterpret_cast<const char*>(signature), crypto_sign_BYTES);
+                qDebug() << "Ed25519 signature received:" << signatureBytes;
+                qDebug() << "Ed25519 nonce bytes:"<< nonceBytes;
+                qDebug()<< "calling submit signed challenge for: "<< m_currentUsername;
+                submitSignedChallenge(m_currentUsername, signatureBytes, nonceBytes);
+
             } else {
                 emit challengeFailed("Invalid response: nonce not found");
             }
@@ -450,16 +411,105 @@ void UserAuthentication::handleChallengeResponse()
         emit challengeFailed(errorMsg);
     }
 
-    currentReply->deleteLater();
-    currentReply = nullptr;
+
+
 }
+bool UserAuthentication::submitSignedChallenge(const QString &username, const QByteArray &signature, const QByteArray &nonce) {
+    qDebug() << "Submitting login for user:" << username;
+
+    if (username.isEmpty()) {
+        emit loginFailed("Username cannot be empty.");
+        return false;
+    }
+
+    if (signature.isEmpty() || nonce.isEmpty()) {
+        emit loginFailed("Signature and nonce are required.");
+        return false;
+    }
+
+    if (serverUrl.isEmpty()) {
+        emit loginFailed("Server URL is not set.");
+        return false;
+    }
+
+    // Create JSON payload
+    QJsonObject loginData;
+    loginData["username"] = username;
+    loginData["signature"] = QString::fromLatin1(signature.toBase64());
+    loginData["nonce"] = QString::fromLatin1(nonce.toBase64());
+
+    QJsonDocument jsonDoc(loginData);
+    QByteArray jsonData = jsonDoc.toJson(QJsonDocument::Compact);
+
+    qDebug() << "Login JSON:" << jsonDoc.toJson(QJsonDocument::Compact);
+
+    qDebug() << "Sending challenge to :" << serverUrl;
+    qDebug() << "--- RAW JSON DATA BEING SENT (HEX DUMP) ---";
+    qDebug() << jsonData.toHex(); // This will print the raw bytes as hexadecimal. No escaping here.
+    qDebug() << "--- END RAW JSON DATA ---";
+
+    // Create network request
+    QNetworkRequest request(QUrl (serverUrl + "/auth/login"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // SSL configuration
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    request.setSslConfiguration(sslConfig);
+
+
+    // Send POST request
+    currentRequestType = Login;
+    currentReply = networkManager->post(request, jsonData);
+    qDebug() << "Response sent successfully"<< currentReply;
+
+
+    // Connect signals
+    connect(currentReply, &QNetworkReply::finished,
+            this, &UserAuthentication::handleLoginResponse);
+    qDebug() << "handleloginresponse";
+    connect(currentReply, &QNetworkReply::sslErrors,
+            this, &UserAuthentication::handleSslErrors);
+    qDebug() << "sslErrors";
+    connect(currentReply, &QNetworkReply::errorOccurred,
+            this, &UserAuthentication::handleNetworkError);
+    qDebug() << "network error";
+
+    return true;
+}
+
 
 void UserAuthentication::handleLoginResponse()
 {
-    if (currentReply->error() == QNetworkReply::NoError) {
+    qDebug() << "handleLoginResponse triggered.";
+    if (currentReply->error() != QNetworkReply::NoError) {
+        qDebug() << "Login Reply Error:" << currentReply->errorString();
+    } else {
+        qDebug() << "Login Reply Success.";
+    }
+    if (currentReply->error() == QNetworkReply::NoError)
+    {
         QByteArray response = currentReply->readAll();
-        qDebug() << "Login successful. Server response:" << response;
-        emit loginSucceeded();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+        if (jsonDoc.isObject())
+        {
+            QJsonObject jsonObj = jsonDoc.object();
+            if (jsonObj.contains("access_token"))
+            {
+                QString accessToken = jsonObj["access_token"].toString();
+                qDebug() << "Access Token:" << accessToken;
+
+                m_accessToken = accessToken;
+                qDebug() << "Access token stored in member variable.";
+
+                emit loginSucceeded(m_currentUsername);
+            }else
+                qDebug() << "Login successful. but access_token not found in response" << response;
+        }else
+        {
+            QString errorMsg = "Login successful, but invalid JSON response received.";
+            qWarning() << errorMsg;
+            emit loginFailed(errorMsg);
+        }
     } else {
         QString errorMsg = QString("Login failed: %1").arg(currentReply->errorString());
         qDebug() << errorMsg;
@@ -470,19 +520,21 @@ void UserAuthentication::handleLoginResponse()
     currentReply = nullptr;
 }
 
-void UserAuthentication::handleSslErrors(const QList<QSslError> &errors) {
-    qDebug() << "SSL errors detected, but ignoring for testing:";
-    for (const QSslError &error : errors) {
-        qDebug() << "  -" << error.errorString();
-    }
+QString UserAuthentication::getAccessToken() const {
+    return m_accessToken;
+}
 
-    if (currentReply) {
-        currentReply->ignoreSslErrors();
+void UserAuthentication::handleSslErrors(const QList<QSslError> &errors) {
+    qDebug() << "handleSslErrors triggered.";
+    for (const QSslError &error : errors) {
+        qDebug() << "SSL Error:" << error.errorString();
     }
+    currentReply->ignoreSslErrors(errors);
 }
 
 void UserAuthentication::handleNetworkError(QNetworkReply::NetworkError error)
 {
+
     QString errorString = currentReply->errorString();
     qDebug() << "Network error occurred during" << (currentRequestType == Challenge ? "challenge" : "login") << ":" << errorString;
 
