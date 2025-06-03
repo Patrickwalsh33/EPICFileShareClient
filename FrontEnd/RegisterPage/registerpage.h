@@ -25,6 +25,10 @@ private slots:
     void onServerRegistrationSucceeded();
     void onServerRegistrationFailed(const QString &error);
 
+signals:
+    void registrationSucceeded();
+    void registrationFailed(const QString &error);
+
 private:
     Ui::RegisterPage *ui; // Pointer to the auto-generated UI class
     
