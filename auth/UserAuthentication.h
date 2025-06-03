@@ -35,6 +35,7 @@ public:
     // Network methods
     void setServerUrl(const QString &url);
     QString getAccessToken() const;
+    QByteArray getDecryptedKekTemp() const;
 
 
 signals:

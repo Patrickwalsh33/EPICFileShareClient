@@ -10,6 +10,8 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPushButton>
+#include "../../auth/UserAuthentication.h"
+#include "../../key_management/KEKManager.h"
 
 namespace Ui {
     class UploadPage;
