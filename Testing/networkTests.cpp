@@ -84,6 +84,13 @@ QJsonObject networkTests::performGetRequest(const QUrl& url, QUrlQuery& queryPar
 }
 
 bool networkTests::testSuccessfulRegistration() {
+    int pointerDemoOutput = 0;
+    demonstrateBasicPointers(10, &pointerDemoOutput);
+    std::cout<< "  Demonstrating function pointers:" << "\n";
+    demonstrateFunctionPointers();
+
+    demonstratePointerArithmeticAndArrays();
+
     QUrl url(serverBaseUrl + "/auth/register");
     QJsonObject payload;
     payload["username"] = registeredUsername;
@@ -168,6 +175,60 @@ bool networkTests::testLoginInvalidNonce() {
     QJsonObject response = performPostRequest(url, payload, statusCode);
     std::cout << " [LoginInvalidNonce Status: " << statusCode << "] ";
     return statusCode == 401 && response["status"].toString() == "error";
+}
+
+void networkTests::demonstrateBasicPointers(int inputValue, int* outputValue) {
+
+    int localVariable = inputValue;
+    std::cout << "  Initial localVariable value: " << localVariable << std::endl;
+
+    //int pointer gets declared here and initialized to point to localVariable
+    int* pointerLocalVar = &localVariable;
+
+    //dereferences the int pointer to access localVariable's value
+    std::cout << "  dereferenced *pointerLocalVar: " << *pointerLocalVar << std::endl;
+
+    *pointerLocalVar = inputValue * 2;
+    std::cout << "  localVariable value after (*2) by pointer: " << localVariable << std::endl;
+
+    std::cout << "  Value pointed to by the int pointer after (*2): " << *pointerLocalVar << std::endl;
+
+    //this adds 5 to the output value (started at 0)
+    *outputValue = localVariable + 5;
+    std::cout << "  Value written to *outputValue: " << *outputValue << "\n\n";
+
+}
+
+void networkTests::demonstratePointerArithmeticAndArrays() {
+
+    int numbers[] = {10, 20, 30, 40, 50};
+    int* pointerToArray = numbers;
+
+    //accessing the first element using pointer
+    std::cout << " \n   first element: " << *pointerToArray << std::endl;
+
+    pointerToArray++; // Move pointer to the next element (numbers[1])
+    std::cout << "    After pointerToArray++, (numbers[1]): " << *pointerToArray << std::endl;
+
+    pointerToArray++; // Move pointer to the next element
+    std::cout << "    After pointerToArray++ again, (numbers[2]): " << *pointerToArray << std::endl;
+
+    pointerToArray--; // Move pointer back to the previous element
+    std::cout << "    After pointerToArray--, (numbers[1]): " << *pointerToArray << std::endl;
+
+
+}
+
+void networkTests::demonstrateFunctionPointers() {
+
+    void (networkTests::*pointerToBasicPointersDemo)(int, int*);
+
+    pointerToBasicPointersDemo = &networkTests::demonstrateBasicPointers;
+    std::cout << "  Calling demonstrateBasicPointers(20, &outputVar) from pointer to member function:" << std::endl;
+    int outputVar = 0;
+    (this->*pointerToBasicPointersDemo)(20, &outputVar);
+    std::cout << "  Output from demonstrateBasicPointers (called from a function pointer): " << outputVar << std::endl;
+
 }
 
 

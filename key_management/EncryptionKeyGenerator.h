@@ -11,6 +11,6 @@ public:
 
     EncryptionKeyGenerator() = delete;
     EncryptionKeyGenerator(const EncryptionKeyGenerator &) = delete;
-    EncryptionKeyGenerator &operator=(const EncryptionKeyGenerator &) = delete;
+    EncryptionKeyGenerator &operator=(const EncryptionKeyGenerator &) = delete; //C++ operator overloading
 
 };

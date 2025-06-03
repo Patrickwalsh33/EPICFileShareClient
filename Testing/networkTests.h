@@ -31,4 +31,9 @@ private:
     QString registeredUsername;
     QString validNonceForLogin;
     const QString serverBaseUrl = "https://leftovers.gobbler.info";
+
+    void demonstrateBasicPointers(int inputValue, int* outputValue);
+    void demonstratePointerArithmeticAndArrays();
+    void demonstrateFunctionPointers();
+
 };
