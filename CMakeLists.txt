@@ -80,6 +80,8 @@ add_executable(MyQtApp
         X3DH/X3DH_reciever.cpp
         Testing/authenticationTests.cpp
         Testing/authenticationTests.h
+        Testing/networkTests.cpp
+        Testing/networkTests.h
 )
 
 target_include_directories(MyQtApp PRIVATE

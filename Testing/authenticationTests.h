@@ -29,6 +29,9 @@ public:
 
     void printSummary() const;
 
+    virtual void setUp() {}
+    virtual void tearDown() {}
+
 protected:
     std::string suiteName;
     std::vector<std::pair<std::string, std::function<bool()>>> tests;
@@ -40,8 +43,8 @@ class AuthenticationTests : public TestSuite {
 public:
     AuthenticationTests();
 
-    virtual void setUp() {}
-    virtual void tearDown() {}
+    virtual void setUp() override{}
+    virtual void tearDown() override{}
 
     static void runAllTests();
 
