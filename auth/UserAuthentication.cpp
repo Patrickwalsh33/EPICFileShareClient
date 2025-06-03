@@ -1,4 +1,6 @@
 #include "UserAuthentication.h"
+
+#include <iostream>
 #include <QDebug>
 #include <sodium/crypto_aead_chacha20poly1305.h>
 #include <sodium.h>
@@ -21,6 +23,7 @@
 #include <QSslConfiguration>
 #include <QNetworkReply>
 #include "keychain/keychain.h"
+#include <string>
 
 
 
@@ -495,10 +498,21 @@ void UserAuthentication::handleLoginResponse()
             QJsonObject jsonObj = jsonDoc.object();
             if (jsonObj.contains("access_token"))
             {
-                QString accessToken = jsonObj["access_token"].toString();
-                qDebug() << "Access Token:" << accessToken;
+                QString accessTokenQString = jsonObj["access_token"].toString();
 
-                m_accessToken = accessToken;
+                // Step 2: Convert the QString to a QByteArray (UTF-8 encoded)
+                QByteArray accessTokenByteArray = accessTokenQString.toUtf8();
+
+                // Step 3: Convert the QByteArray to a std::string
+                std::string accessTokenStdString = accessTokenByteArray.toStdString();
+
+                std::cout << accessTokenStdString << std::endl;
+
+                QByteArray rawAccessToken = jsonObj["access_token"].toVariant().toByteArray();
+                // qDebug() << "Access Token:" << accessToken;
+                qDebug() << "Raw Access Token:" << rawAccessToken;
+
+                // m_accessToken = accessToken;
                 qDebug() << "Access token stored in member variable.";
 
                 emit loginSucceeded(m_currentUsername);
