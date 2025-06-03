@@ -6,10 +6,13 @@
 #include "Testing/X3DHTest.h"
 #include "key_management/DataEncryptionKey.h"
 #include "crypto/crypto_utils.h"
+#include "Testing/authenticationTests.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    AuthenticationTests::runAllTests();
 
     LandingPage landingPage;
     landingPage.show();
