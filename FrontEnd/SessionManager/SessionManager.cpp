@@ -30,6 +30,15 @@ void SessionManager::setDecryptedKEK(const QByteArray& kek) {
 QByteArray SessionManager::getDecryptedKEK() const {
     return m_decryptedKEK;
 }
+void SessionManager::setAccessToken(const QByteArray& accessToken)
+{
+    m_accessToken = accessToken;
+}
+QByteArray SessionManager::getAccessToken() const
+{
+    return m_accessToken;
+}
+
 
 void SessionManager::clearSessionData() {
     // Securely clear the KEK

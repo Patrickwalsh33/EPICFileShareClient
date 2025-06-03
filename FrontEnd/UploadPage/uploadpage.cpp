@@ -18,6 +18,8 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLineEdit>
+#include <QJsonParseError>
 
 
 std::string userPackage = "leftovers.project";
@@ -31,6 +33,14 @@ UploadPage::UploadPage(QWidget *parent) :
         uploader(new uploadManager(this)),
         selectedFileIndex(static_cast<size_t>(-1)) {
     ui->setupUi(this);
+
+    // Connect usernameLineEdit
+    connect(ui->usernameLineEdit, &QLineEdit::textChanged, this, &UploadPage::onUsernameChanged);
+
+    // Connect uploader signals
+    connect(uploader, &uploadManager::recipientKeysReceived, this, &UploadPage::handleRecipientKeysResponse);
+    // You might also want to connect recipientKeysFailed to a slot to handle errors
+    // connect(uploader, &uploadManager::recipientKeysFailed, this, &UploadPage::handleRecipientKeysError); 
 
     // Replace the standard buttons with HoverButton
     HoverButton* selectFileBtn = new HoverButton(this);
@@ -70,7 +80,7 @@ UploadPage::UploadPage(QWidget *parent) :
     connect(ui->backButton, &QPushButton::clicked, this, &UploadPage::on_backButton_clicked);
 
     ui->uploadButton->setEnabled(false);
-    ui->encryptButton->setEnabled(false);
+    ui->encryptButton->setEnabled(true);
     ui->uploadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
     ui->encryptButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
 
@@ -213,10 +223,98 @@ void printSharedSecret(const unsigned char* secret, size_t length) {
     for (size_t i = 0; i < length; ++i) {
         std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(secret[i]);
     }
-    std::cout << std::dec << std::endl; // Reset formatting back to decimal
+    std::cout << std::dec << std::endl;
 }
 
-void UploadPage::on_encryptButton_clicked() {
+void UploadPage::onUsernameChanged(const QString &text) {
+    currentUsername = text;
+    qDebug() << "Username changed to:" << currentUsername;
+}
+
+void UploadPage::handleRecipientKeysResponse(const QByteArray &data) {
+    qDebug() << "UploadPage received recipientKeysReceived signal with data:" << data.left(200); 
+
+
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse recipient keys JSON:" << parseError.errorString();
+
+        return;
+    }
+
+    if (!jsonDoc.isObject()) {
+        qWarning() << "Recipient keys JSON is not an object.";
+        return;
+    }
+
+    QJsonObject jsonObj = jsonDoc.object();
+
+    // Corrected keys to match server JSON response
+    if (jsonObj.contains("Public Key") && jsonObj["Public Key"].isString()) {
+        this->recipientIdentityKey_ = jsonObj["Public Key"].toString();
+        qDebug() << "Parsed recipientIdentityKey_ (Public Key):" << this->recipientIdentityKey_;
+    } else {
+        qWarning() << "Recipient keys JSON missing or invalid 'Public Key'";
+    }
+
+    if (jsonObj.contains("Public Pre Key") && jsonObj["Public Pre Key"].isString()) {
+        this->recipientSignedPreKey_ = jsonObj["Public Pre Key"].toString();
+        qDebug() << "Parsed recipientSignedPreKey_ (Public Pre Key):" << this->recipientSignedPreKey_;
+    } else {
+        qWarning() << "Recipient keys JSON missing or invalid 'Public Pre Key'";
+    }
+
+    if (jsonObj.contains("Pre Key Signature") && jsonObj["Pre Key Signature"].isString()) {
+        this->recipientPreKeySignature_ = jsonObj["Pre Key Signature"].toString();
+        qDebug() << "Parsed recipientPreKeySignature_ (Pre Key Signature):" << this->recipientPreKeySignature_;
+    } else {
+        qWarning() << "Recipient keys JSON missing or invalid 'Pre Key Signature'";
+    }
+
+    // Check if all keys were successfully parsed
+    if (!this->recipientIdentityKey_.isEmpty() && 
+        !this->recipientSignedPreKey_.isEmpty() && 
+        !this->recipientPreKeySignature_.isEmpty()) {
+        
+        qDebug() << "All recipient keys successfully parsed. Proceeding with encryption.";
+        // Restore button text before proceeding or after encryption is fully done in proceedWithEncryption
+        ui->encryptButton->setText("Encrypt File"); 
+
+        
+        proceedWithEncryption(); // Call proceedWithEncryption now that keys are ready
+    } else {
+        qCritical() << "One or more recipient keys could not be parsed. Encryption aborted.";
+        QMessageBox::critical(this, "Encryption Error", "Could not retrieve all necessary recipient keys. Please check the username or try again.");
+        // Restore UI state since we are not proceeding
+        ui->encryptButton->setEnabled(true);
+        ui->encryptButton->setText("Encrypt File");
+    }
+}
+
+void UploadPage::on_encryptButton_clicked()
+{
+    // Ensure a username is entered
+    if (this->currentUsername.isEmpty()) {
+        QMessageBox::warning(this, "Input Error", "Please enter a recipient username.");
+        return;
+    }
+    qDebug() << "Encrypt button clicked for recipient:" << this->currentUsername;
+
+
+    ui->encryptButton->setEnabled(false);
+    ui->encryptButton->setText("Fetching keys...");
+
+
+    // Call requestRecipientKeys
+    uploader->requestRecipientKeys(this->currentUsername);
+
+
+}
+
+void UploadPage::proceedWithEncryption(){
     if (selectedFileIndex >= files.size() || files[selectedFileIndex].isEncrypted) {
         return;
     }

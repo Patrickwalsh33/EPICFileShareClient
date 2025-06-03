@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QLineEdit>
 #include "../../auth/UserAuthentication.h"
 #include "../../key_management/KEKManager.h"
 
@@ -101,16 +102,23 @@ public:
 
 private slots:
     void on_selectFileButton_clicked();
-    void on_encryptButton_clicked();   // 🔐 NEW: Handles encryption
+    void on_encryptButton_clicked();   // Corrected signature
+    void proceedWithEncryption();
     void on_uploadButton_clicked();
     void on_backButton_clicked();
     void onFileBoxClicked(size_t index);
+    void onUsernameChanged(const QString &text);
+    void handleRecipientKeysResponse(const QByteArray &data);
 
 private:
     Ui::UploadPage *ui;
     std::vector<FileInfo> files;
     size_t selectedFileIndex;
     uploadManager *uploader;
+    QString currentUsername;
+    QString recipientIdentityKey_;
+    QString recipientSignedPreKey_;
+    QString recipientPreKeySignature_;
 
     void updateFileInfo(size_t index);
     void createFileBox(FileInfo& fileInfo);
