@@ -1,4 +1,4 @@
-#include "X3DH_Shared.h"
+#include "X3DH_shared.h"
 #include <sodium.h>
 #include <cstring>
 #include <iostream>
