@@ -13,6 +13,7 @@
 #include <QJsonArray>
 #include <QNetworkRequest>
 #include <QSslError>
+#include "RateLimiter.h"
 
 
 
@@ -54,6 +55,7 @@ private slots:
     void handleNetworkError(QNetworkReply::NetworkError error);
 
 private:
+    RateLimiter rateLimiter;
     bool requestChallenge(const QString &username);
     bool submitSignedChallenge(const QString &username, const QByteArray &signature, const QByteArray &nonce);
 

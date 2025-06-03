@@ -82,6 +82,10 @@ add_executable(MyQtApp
         Testing/authenticationTests.h
         Testing/networkTests.cpp
         Testing/networkTests.h
+        auth/RateLimiter.cpp
+        auth/RateLimiter.h
+        Backend/Decryption/DecryptionManager.cpp
+        Backend/Decryption/DecryptionManager.h
 )
 
 target_include_directories(MyQtApp PRIVATE

@@ -212,6 +212,11 @@ bool UserAuthentication::generateAndRegisterX3DHKeys(const QString& username, co
 }
 
 bool UserAuthentication::loginUser(const QString& username, const QString& qpassword, QString& errorMsg) {
+
+    if(!rateLimiter.canAttemptLogin()){
+        errorMsg =  "Too many attempts. Wait 5 minutes";
+        return false;
+    }
     std::vector<unsigned char> masterKeyOnLogin;
 
     std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
@@ -502,6 +507,7 @@ void UserAuthentication::handleLoginResponse()
         }
     } else {
         qDebug() << "Login Reply Success.";
+        rateLimiter.loginSuccess();
     }
     if (currentReply->error() == QNetworkReply::NoError)
     {
@@ -517,10 +523,13 @@ void UserAuthentication::handleLoginResponse()
                 // Step 2: Convert the QString to a QByteArray (UTF-8 encoded)
                 QByteArray accessTokenByteArray = accessTokenQString.toUtf8();
 
+                SessionManager::getInstance()->setAccessToken(accessTokenByteArray);
+
                 // Step 3: Convert the QByteArray to a std::string
                 std::string accessTokenStdString = accessTokenByteArray.toStdString();
 
                 std::cout << accessTokenStdString << std::endl;
+
 
                 QByteArray rawAccessToken = jsonObj["access_token"].toVariant().toByteArray();
                 // qDebug() << "Access Token:" << accessToken;

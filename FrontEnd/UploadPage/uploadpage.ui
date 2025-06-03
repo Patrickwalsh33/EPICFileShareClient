@@ -50,17 +50,17 @@
      <x>200</x>
      <y>250</y>
      <width>300</width>
-     <height>70</height>
+     <height>50</height>
     </rect>
    </property>
    <property name="font">
     <font>
-     <pointsize>22</pointsize>
+     <pointsize>20</pointsize>
      <bold>true</bold>
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: white; background-color: #4CAF50; border: none; border-radius: 15px; font-size: 22px;</string>
+    <string notr="true">color: white; background-color: #4CAF50; border: none; border-radius: 15px; font-size: 20px;</string>
    </property>
    <property name="text">
     <string>Select File</string>
@@ -70,7 +70,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>340</y>
+     <y>325</y>
      <width>800</width>
      <height>180</height>
     </rect>
@@ -113,7 +113,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>540</y>
+     <y>515</y>
      <width>800</width>
      <height>30</height>
     </rect>
@@ -133,11 +133,50 @@
     <set>Qt::AlignCenter</set>
    </property>
   </widget>
+  <widget class="QLabel" name="usernameLabel">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>560</y>
+     <width>150</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>14</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: #333;</string>
+   </property>
+   <property name="text">
+    <string>Username:</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="usernameLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>560</y>
+     <width>440</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>14</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">border: 1px solid #ccc; border-radius: 5px; padding: 5px;</string>
+   </property>
+  </widget>
   <widget class="QPushButton" name="encryptButton">
    <property name="geometry">
     <rect>
      <x>400</x>
-     <y>600</y>
+     <y>620</y>
      <width>250</width>
      <height>70</height>
     </rect>
@@ -159,7 +198,7 @@
    <property name="geometry">
     <rect>
      <x>700</x>
-     <y>600</y>
+     <y>620</y>
      <width>250</width>
      <height>70</height>
     </rect>
@@ -181,7 +220,7 @@
    <property name="geometry">
     <rect>
      <x>100</x>
-     <y>600</y>
+     <y>620</y>
      <width>150</width>
      <height>70</height>
     </rect>
