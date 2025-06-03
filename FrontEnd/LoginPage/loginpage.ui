@@ -155,35 +155,13 @@
     <string>Login</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="goToRegistationButton">
+  <widget class="QPushButton" name="backToLandingButton">
    <property name="geometry">
     <rect>
      <x>650</x>
      <y>500</y>
-     <width>200</width>
+     <width>350</width>
      <height>70</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>24</pointsize>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">color: black; background-color: lightgray; border-radius: 15px;</string>
-   </property>
-   <property name="text">
-    <string>Create Account</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="backToLandingButton">
-   <property name="geometry">
-    <rect>
-     <x>525</x>
-     <y>700</y>
-     <width>150</width>
-     <height>60</height>
     </rect>
    </property>
    <property name="font">
@@ -217,7 +195,7 @@
     <string notr="true">color: red;</string>
    </property>
    <property name="text">
-    <string>Error message here</string>
+    <string></string>
    </property>
   </widget>
  </widget>

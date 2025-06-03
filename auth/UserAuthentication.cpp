@@ -65,11 +65,13 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
     // Validate username
     if (!validator->validateUsername(username, errorMsg)) {
+        emit registrationFailed(errorMsg);
         return false;
     }
     
     // Validate password
     if (!validator->validatePassword(qpassword, confirmPassword, errorMsg)) {
+        emit registrationFailed(errorMsg);
         return false;
     }
 
@@ -110,14 +112,18 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
 
 
         if (!generateAndRegisterX3DHKeys(username, kek, errorMsg)) {
+            emit registrationFailed(errorMsg);
             return false;
         }
 
         qDebug() << "User registration successful for:" << username;
+        emit registrationSucceeded();
+        return true;
 
 
     } catch (const std::exception& e) {
         errorMsg = QString("Failed to derive master key: %1").arg(e.what());
+        emit registrationFailed(errorMsg);
         return false;
     }
     
