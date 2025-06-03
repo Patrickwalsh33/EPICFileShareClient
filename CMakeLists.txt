@@ -80,6 +80,8 @@ add_executable(MyQtApp
         X3DH/X3DH_reciever.cpp
         auth/RateLimiter.cpp
         auth/RateLimiter.h
+        Backend/Decryption/DecryptionManager.cpp
+        Backend/Decryption/DecryptionManager.h
 )
 
 target_include_directories(MyQtApp PRIVATE

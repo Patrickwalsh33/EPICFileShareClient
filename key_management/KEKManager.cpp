@@ -123,16 +123,36 @@ DecryptedKeyData KEKManager::decryptStoredUserKeys(const std::vector<unsigned ch
 std::vector<unsigned char> KEKManager::decryptStoredPrivateIdentityKey(const std::vector<unsigned char>& kek)
 {
     keychain::Error keychainError;
-
-    KeyEncryptor::EncryptedData identityEncrypted = keyEncryptor_.loadEncryptedKey("identityKey",keychainError);
-
+    KeyEncryptor::EncryptedData identityEncrypted = keyEncryptor_.loadEncryptedKey("identityKey", keychainError);
+    if (keychainError) {
+        std::cerr << "Error loading identityKey from keychain: " << keychainError.message << std::endl;
+        throw std::runtime_error("Failed to load identityKey from keychain.");
+    }
+    if (identityEncrypted.ciphertext.empty()) {
+        std::cerr << "Loaded identityKey ciphertext is empty." << std::endl;
+        throw std::runtime_error("Loaded identityKey ciphertext is empty.");
+    }
     auto decryptedIdentityKey = KeyEncryptor::decrypt(identityEncrypted, kek);
-
     print_hex("Decrypted Identity Key: ", decryptedIdentityKey.data(), decryptedIdentityKey.size());
-
-
-
     return decryptedIdentityKey;
+}
+
+// New function implementation
+std::vector<unsigned char> KEKManager::decryptStoredSignedPreKey(const std::vector<unsigned char>& kek)
+{
+    keychain::Error keychainError;
+    KeyEncryptor::EncryptedData signedPreKeyEncrypted = keyEncryptor_.loadEncryptedKey("signedPreKey", keychainError);
+    if (keychainError) {
+        std::cerr << "Error loading signedPreKey from keychain: " << keychainError.message << std::endl;
+        throw std::runtime_error("Failed to load signedPreKey from keychain.");
+    }
+    if (signedPreKeyEncrypted.ciphertext.empty()) {
+        std::cerr << "Loaded signedPreKey ciphertext is empty." << std::endl;
+        throw std::runtime_error("Loaded signedPreKey ciphertext is empty.");
+    }
+    auto decryptedSignedPreKey = KeyEncryptor::decrypt(signedPreKeyEncrypted, kek);
+    print_hex("Decrypted Signed PreKey: ", decryptedSignedPreKey.data(), decryptedSignedPreKey.size());
+    return decryptedSignedPreKey;
 }
 
 
