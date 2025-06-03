@@ -13,6 +13,12 @@
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../../key_management/KEKManager.h"
 #include "../SessionManager/SessionManager.h"
+#include <QUuid>
+#include <QMimeDatabase>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 
 std::string userPackage = "leftovers.project";
 std::string userId = "tempUser";
@@ -85,6 +91,7 @@ UploadPage::~UploadPage() {
 
 void UploadPage::on_selectFileButton_clicked() {
     QString fileName = QFileDialog::getOpenFileName(this, "Select File to Upload", QDir::homePath(), "All Files (*.*)");
+    QMimeDatabase db;
 
     if (!fileName.isEmpty()) {
         QFile file(fileName);
@@ -93,17 +100,25 @@ void UploadPage::on_selectFileButton_clicked() {
             return;
         }
 
-        FileInfo newFile;
-        newFile.path = fileName;
-        newFile.originalData = file.readAll();
-        newFile.isEncrypted = false;
-        newFile.dek = DataEncryptionKey().getKey();
-        newFile.index = files.size();  // Set the index before adding to vector
+        QByteArray fileData = file.readAll();
         file.close();
 
-        files.push_back(newFile);  // Add to vector first
-        createFileBox(files.back());  // Then create the box
-        updateFileInfo(files.size() - 1);  // Update info for the new file
+        // Construct FileInfo struct
+        FileInfo newFile;
+        newFile.path = fileName;
+        newFile.originalData = fileData;
+        newFile.isEncrypted = false;
+        newFile.uuid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        newFile.dek = DataEncryptionKey().getKey();
+        newFile.mimeType = db.mimeTypeForFile(fileName).name();
+        QFileInfo fi(fileName);
+        newFile.fileName = fi.fileName();
+        newFile.index = files.size();
+
+        // Add to file list and update UI
+        files.push_back(newFile);              // Add to internal list
+        createFileBox(files.back());           // Create UI box for file
+        updateFileInfo(files.size() - 1);      // Update displayed info
     }
 }
 
@@ -207,8 +222,8 @@ void UploadPage::on_encryptButton_clicked() {
     }
 
     auto& selectedFile = files[selectedFileIndex];
-    unsigned long long ciphertext_len;
-    std::vector<unsigned char> ciphertext(selectedFile.originalData.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
+    unsigned long long fileCiphertext_len;
+    std::vector<unsigned char> fileCiphertext(selectedFile.originalData.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
     std::vector<unsigned char> fileNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
 
 
@@ -217,8 +232,8 @@ void UploadPage::on_encryptButton_clicked() {
             reinterpret_cast<const unsigned char*>(selectedFile.originalData.constData()),
             selectedFile.originalData.size(),
             selectedFile.dek.data(),
-            ciphertext.data(),
-            &ciphertext_len,
+            fileCiphertext.data(),
+            &fileCiphertext_len,
             fileNonce.data()
     );
 
@@ -287,46 +302,52 @@ void UploadPage::on_encryptButton_clicked() {
         return;
     }
 
-// Encrypt the DEK using the derived key
-    std::vector<unsigned char> dekNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
-    randombytes_buf(dekNonce.data(), dekNonce.size());
+    //get file metadata into json object
+    QJsonObject metadataJson;
+    metadataJson["uuid"] = selectedFile.uuid;
+    QString base64Dek = QByteArray(reinterpret_cast<const char*>(selectedFile.dek.data()), selectedFile.dek.size()).toBase64();
+    metadataJson["dek"] = base64Dek;
+    QString base64FileNonce = QByteArray(reinterpret_cast<const char*>(fileNonce.data()), fileNonce.size()).toBase64();
+    metadataJson["file_nonce"] = base64FileNonce;
+    metadataJson["filename"] = selectedFile.fileName;
+    metadataJson["mime"] = selectedFile.mimeType;
 
-    std::vector<unsigned char> encryptedDek(selectedFile.dek.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
-    unsigned long long encryptedDekLen = 0;
+// serialize to string
+    QJsonDocument doc(metadataJson);
+    QString jsonString = doc.toJson(QJsonDocument::Compact);
+
+    std::cout << "File Metadata JSON: " << jsonString.toStdString() << std::endl;
+
+
+// Encrypt the file metadata using the derived key
+    QByteArray jsonData = jsonString.toUtf8();
+
+    std::vector<unsigned char> metaNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES);
+    randombytes_buf(metaNonce.data(), metaNonce.size());
+
+    std::vector<unsigned char> encryptedMetadata(jsonData.size() + crypto_aead_chacha20poly1305_ietf_ABYTES);
+    unsigned long long encryptedMetadataLen = 0;
 
     if (crypto_aead_chacha20poly1305_ietf_encrypt(
-            encryptedDek.data(), &encryptedDekLen,
-            selectedFile.dek.data(), selectedFile.dek.size(),
+            encryptedMetadata.data(), &encryptedMetadataLen,
+            reinterpret_cast<const unsigned char*>(jsonData.constData()), jsonData.size(),
             nullptr, 0,  // no associated data
             nullptr,
-            dekNonce.data(),
+            metaNonce.data(),
             derivedKey
     ) != 0) {
-        QMessageBox::critical(this, "Encryption Error", "Failed to encrypt DEK with derived key.");
+        QMessageBox::critical(this, "Encryption Error", "Failed to encrypt file metadata.");
         return;
     }
-    std::cout << "[X3DH] DEK was successfully encrypted using the derived key." << std::endl;
 
-    // testing decryption
-    std::vector<unsigned char> decryptedDek;
-    bool decrypted = decrypt_dek(encryptedDek, encryptedDekLen, dekNonce, derivedKey, decryptedDek);
-
-    if (decrypted) {
-        if (decryptedDek == std::vector<unsigned char>(selectedFile.dek.begin(), selectedFile.dek.end())) {
-            std::cout << "[X3DH] Decrypted DEK matches original DEK." << std::endl;
-        } else {
-            std::cerr << "[X3DH] Decrypted DEK does NOT match original DEK!" << std::endl;
-        }
-    } else {
-        QMessageBox::critical(this, "Decryption Error", "Failed to decrypt the encrypted DEK.");
-    }
+    std::cout << "[X3DH] File metadata successfully encrypted." << std::endl;
 
 
 
-    selectedFile.encryptedData = QByteArray(reinterpret_cast<const char*>(ciphertext.data()), ciphertext_len);
+    selectedFile.encryptedData = QByteArray(reinterpret_cast<const char*>(fileCiphertext.data()), fileCiphertext_len);
     selectedFile.encryptedFileNonce = QByteArray(reinterpret_cast<const char*>(fileNonce.data()), fileNonce.size());
-    selectedFile.encryptedDek = QByteArray(reinterpret_cast<const char*>(encryptedDek.data()), encryptedDekLen);
-    selectedFile.encryptedDekNonce = QByteArray(reinterpret_cast<const char*>(dekNonce.data()), dekNonce.size());
+    selectedFile.encryptedMetadata = QByteArray(reinterpret_cast<const char*>(encryptedMetadata.data()), encryptedMetadataLen);
+    selectedFile.metadataNonce = QByteArray(reinterpret_cast<const char*>(metaNonce.data()), metaNonce.size());
     selectedFile.isEncrypted = true;
 
     selectedFile.statusLabel->setText("Status: Encrypted and ready for upload");
@@ -351,7 +372,7 @@ void UploadPage::on_uploadButton_clicked() {
     }
 
     const auto& selectedFile = files[selectedFileIndex];
-    uploader->uploadFile(selectedFile.encryptedData, selectedFile.encryptedDek);
+    uploader->uploadFile(selectedFile.encryptedData, selectedFile.encryptedMetadata);
 }
 
 void UploadPage::on_backButton_clicked() {
