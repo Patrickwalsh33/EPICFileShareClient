@@ -193,6 +193,14 @@ void UploadPage::updateButtonStates() {
     }
 }
 
+void printSharedSecret(const unsigned char* secret, size_t length) {
+    std::cout << "Shared Secret: ";
+    for (size_t i = 0; i < length; ++i) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(secret[i]);
+    }
+    std::cout << std::dec << std::endl; // Reset formatting back to decimal
+}
+
 void UploadPage::on_encryptButton_clicked() {
     if (selectedFileIndex >= files.size() || files[selectedFileIndex].isEncrypted) {
         return;
@@ -258,8 +266,9 @@ void UploadPage::on_encryptButton_clicked() {
             receiverIDPublicKey,
             receiverSignedPrekeyPub,
             receiverSignedPrekeySig);
+
     if (success) {
-        std::cout << sharedSecret << std::endl;
+        printSharedSecret(sharedSecret, crypto_generichash_BYTES);
     }
 
     unsigned char derivedKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES]; // 32 bytes
@@ -334,6 +343,7 @@ void UploadPage::on_encryptButton_clicked() {
                         "QPushButton:hover { background-color: #1976D2; }");
     msgBox.exec();
 }
+
 
 void UploadPage::on_uploadButton_clicked() {
     if (selectedFileIndex >= files.size() || !files[selectedFileIndex].isEncrypted) {
