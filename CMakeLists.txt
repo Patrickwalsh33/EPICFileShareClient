@@ -30,6 +30,8 @@ add_executable(MyQtApp
         FrontEnd/ProfilePage/ProfilePage.ui
         FrontEnd/HomePage/homepage.cpp
         FrontEnd/HomePage/homepage.ui
+        FrontEnd/SessionManager/SessionManager.cpp
+        FrontEnd/SessionManager/SessionManager.h
         X3DH/X3DH_shared.h
         X3DH/X3DH_sender.cpp
         FrontEnd/RegisterPage/registerpage.cpp

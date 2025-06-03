@@ -9,6 +9,8 @@
 #include "../../X3DH/X3DH_shared.h"
 #include <iostream>
 #include "../../key_management/X3DHKeys/EphemeralKeyPair.h"
+#include "../../key_management/X3DHKeys/SignedPreKeyPair.h"
+#include "../../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../../key_management/KEKManager.h"
 #include "../SessionManager/SessionManager.h"
 
@@ -217,6 +219,18 @@ void UploadPage::on_encryptButton_clicked() {
     const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
     const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
 
+    IdentityKeyPair identityKeyPair;
+    const unsigned char* receiverIDPublicKey = identityKeyPair.getPublicKey().data();
+    const unsigned char* receiverIDPrivKey = identityKeyPair.getPrivateKey().data();
+
+
+    SignedPreKeyPair signedPreKeyPair(identityKeyPair.getPrivateKey());
+    const unsigned char* receiverSignedPrekeyPub = signedPreKeyPair.getPublicKey().data();
+    const unsigned char* receiverSignedPrekeySig = signedPreKeyPair.getSignature().data();
+
+
+
+
     // Get KEK from SessionManager
     QByteArray kek = SessionManager::getInstance()->getDecryptedKEK();
     if (kek.isEmpty()) {
@@ -241,9 +255,12 @@ void UploadPage::on_encryptButton_clicked() {
             sizeof(sharedSecret),
             senderEphemeralPrivateKey,
             senderId,
-            receiverIdentityPubEd[crypto_sign_PUBLICKEYBYTES],
-            receiverSignedPrekeyPub[crypto_scalarmult_BYTES],
-            receiverSignedPrekeySig[crypto_sign_BYTES]);
+            receiverIDPublicKey,
+            receiverSignedPrekeyPub,
+            receiverSignedPrekeySig);
+    if (success) {
+        std::cout << sharedSecret << std::endl;
+    }
 
     unsigned char derivedKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES]; // 32 bytes
     const char context[8] = "X3DHKEY";

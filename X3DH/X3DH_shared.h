@@ -9,7 +9,6 @@ bool x3dh_sender_derive_shared_secret(
         const unsigned char senderEphemeralPriv[crypto_scalarmult_SCALARBYTES],
         const unsigned char senderIdentityPrivEd[crypto_sign_SECRETKEYBYTES],
         const unsigned char receiverIdentityPubEd[crypto_sign_PUBLICKEYBYTES],
-        const unsigned char receiverIdentityPubCurve[crypto_scalarmult_BYTES],
         const unsigned char receiverSignedPrekeyPub[crypto_scalarmult_BYTES],
         const unsigned char receiverSignedPrekeySig[crypto_sign_BYTES]
 );
