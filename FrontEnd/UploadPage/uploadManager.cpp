@@ -8,6 +8,8 @@
 #include <QUrlQuery>
 #include <QHttpMultiPart>
 #include <QHttpPart>
+#include <QJsonObject>
+#include <QJsonDocument>
 
 #include "../SessionManager/SessionManager.h"
 
@@ -87,11 +89,17 @@ bool uploadManager::requestRecipientKeys(const QString &username)
     return true;
 }
 
-bool uploadManager::uploadFile(const QByteArray &encryptedData, const QString &file_uuid, const QString &originalFileName) {
-    qDebug() << "Attempting to upload file. UUID:" << file_uuid << "Original Filename:" << originalFileName;
+bool uploadManager::uploadFile(const QByteArray &encryptedData, 
+                               const QString &file_uuid, 
+                               const QString &originalFileName,
+                               const QString &recipientUsername,
+                               const QByteArray &ephemeralPublicKey,
+                               const QByteArray &encryptedFileMetadata,
+                               const QByteArray &metadataNonce) {
+    qDebug() << "Step 1 (uploadFile): Initiating file data upload. UUID:" << file_uuid << "Recipient:" << recipientUsername;
 
     if (encryptedData.isEmpty()) {
-        emit uploadFailed("Encrypted file data is empty.");
+        emit uploadFailed("File data upload failed: Encrypted file data is empty.");
         return false;
     }
     if (file_uuid.isEmpty()) {
@@ -103,59 +111,48 @@ bool uploadManager::uploadFile(const QByteArray &encryptedData, const QString &f
         return false;
     }
 
-    // Ensure serverUrl is set appropriately, e.g., to "https://leftovers.gobbler.info"
-    // The specific endpoint is /upload_data
-    if (serverUrl.isEmpty()) {
-        // Attempt to set a default or fetch from a config if appropriate
-        // For now, let's assume it was set earlier via setServerUrl or hardcode for this specific function if necessary
-        // If this service only uploads to one place, hardcoding here might be acceptable short-term.
-        // Example: setServerUrl("https://leftovers.gobbler.info");
-        qWarning() << "Server URL is not set in uploadManager. Attempting to use default or last set.";
-        if (serverUrl.isEmpty()) { // Check again if it wasn't set by a potential default mechanism
-             emit uploadFailed("Server URL for upload is not set.");
-             return false;
-        }
-    }
+    // Store metadata for the second request
+    this->m_recipientUsername_temp = recipientUsername;
+    this->m_ephemeralPublicKey_temp = ephemeralPublicKey;
+    this->m_encryptedFileMetadata_temp = encryptedFileMetadata;
+    this->m_metadataNonce_temp = metadataNonce;
 
     QByteArray jwtToken = SessionManager::getInstance()->getAccessToken();
     if (jwtToken.isEmpty()) {
-        emit uploadFailed("JWT Token is missing. Cannot authenticate.");
+        emit uploadFailed("File data upload failed: JWT Token is missing.");
+        return false;
+    }
+    if (serverUrl.isEmpty()) {
+        emit uploadFailed("File data upload failed: Server URL is not set.");
         return false;
     }
 
+    // --- First POST request: Upload encrypted file data ---
     QHttpMultiPart *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
-
-    // Part 1: file_uuid
     QHttpPart uuidPart;
     uuidPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file_uuid\""));
     uuidPart.setBody(file_uuid.toUtf8());
     multiPart->append(uuidPart);
 
-    // Part 2: encrypted_file
     QHttpPart filePart;
-    // The Content-Type for the file part can be generic like application/octet-stream
-    // or more specific if the server expects/uses it.
     filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
     QString contentDisposition = QString("form-data; name=\"encrypted_file\"; filename=\"%1\"").arg(originalFileName);
     filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant(contentDisposition));
     filePart.setBody(encryptedData);
     multiPart->append(filePart);
 
-    QUrl uploadUrl(serverUrl + "/upload_data");
-    QNetworkRequest request(uploadUrl);
-    request.setRawHeader("Authorization", "Bearer " + jwtToken);
-    // QSslConfiguration can be set here if needed, similar to other requests
-    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    request.setSslConfiguration(sslConfig);
+    QUrl uploadDataUrl(serverUrl + "/upload_data");
+    QNetworkRequest request_upload_data(uploadDataUrl);
+    request_upload_data.setRawHeader("Authorization", "Bearer " + jwtToken);
+    QSslConfiguration sslConfig_upload_data = QSslConfiguration::defaultConfiguration(); // Renamed for clarity
+    request_upload_data.setSslConfiguration(sslConfig_upload_data);
 
-    qDebug() << "Uploading to URL:" << uploadUrl.toString();
-    currentReply = networkManager->post(request, multiPart);
-    multiPart->setParent(currentReply); // Important for memory management: QHttpMultiPart will be deleted when QNetworkReply is deleted.
-
-    currentRequestType = SendFile; // Assuming you have this enum member to track request type
+    qDebug() << "Uploading file data to URL:" << uploadDataUrl.toString();
+    currentRequestType = SendFile;
+    currentReply = networkManager->post(request_upload_data, multiPart);
+    multiPart->setParent(currentReply); 
 
     connect(currentReply, &QNetworkReply::finished, this, &uploadManager::handleUploadFinished);
-    // connect(currentReply, &QNetworkReply::uploadProgress, this, &uploadManager::uploadProgress); // If you want to emit progress
     connect(currentReply, &QNetworkReply::sslErrors, this, &uploadManager::handleSslErrors);
     connect(currentReply, &QNetworkReply::errorOccurred, this, &uploadManager::handleNetworkError);
 
@@ -186,27 +183,92 @@ void uploadManager::handleKeysReceived()
 }
 
 
-void uploadManager::handleUploadFinished()
+void uploadManager::handleUploadFinished() // Handles reply from /upload_data (file content)
 {
     if (!currentReply) {
         qWarning() << "handleUploadFinished called with null currentReply";
+        // This case should ideally not happen if signal/slot connections are correct
+        emit uploadFailed("Internal error: File upload reply is null.");
         return;
     }
 
-    QByteArray responseData = currentReply->readAll();
+    QByteArray responseData_fileUpload = currentReply->readAll();
+    QNetworkReply::NetworkError error_fileUpload = currentReply->error();
+    QString errorString_fileUpload = currentReply->errorString();
+    
+    // Clean up the first reply before making a new request or emitting final failure
+    currentReply->deleteLater();
+    currentReply = nullptr;
 
-    if (currentReply->error() == QNetworkReply::NoError) {
-        qDebug() << "Upload successful. Server response:" << responseData;
-        emit uploadSucceeded(responseData);
+    if (error_fileUpload != QNetworkReply::NoError) {
+        qCritical() << "Step 1 Failed (File Data Upload). Error:" << errorString_fileUpload << "Server response:" << responseData_fileUpload;
+        emit uploadFailed("File data upload failed: " + errorString_fileUpload + " (Server response: " + QString::fromUtf8(responseData_fileUpload) + ")");
+        return;
+    }
+
+    qDebug() << "Step 1 Success (File Data Upload). Server response:" << responseData_fileUpload;
+    qDebug() << "Step 2 (handleUploadFinished): Initiating metadata share.";
+
+    // --- Second POST request: Share file metadata ---
+    QByteArray jwtToken = SessionManager::getInstance()->getAccessToken(); // Get token again, in case it expired or for atomicity
+    if (jwtToken.isEmpty()) {
+        emit uploadFailed("Metadata share failed: JWT Token is missing for second request.");
+        return;
+    }
+     if (serverUrl.isEmpty()) { // Should still be set from the first part
+        emit uploadFailed("Metadata share failed: Server URL is not set for second request.");
+        return;
+    }
+
+    QJsonObject metadataJsonPayload;
+    metadataJsonPayload["recipient_username"] = this->m_recipientUsername_temp;
+    metadataJsonPayload["ephemeral_key"] = QString::fromLatin1(this->m_ephemeralPublicKey_temp.toBase64());
+    metadataJsonPayload["encrypted_file_metadata"] = QString::fromLatin1(this->m_encryptedFileMetadata_temp.toBase64());
+    metadataJsonPayload["encrypted_metadata_nonce"] = QString::fromLatin1(this->m_metadataNonce_temp.toBase64());
+
+    QJsonDocument jsonDoc(metadataJsonPayload);
+    QByteArray jsonDataForShare = jsonDoc.toJson(QJsonDocument::Compact);
+
+    QUrl shareMetadataUrl(serverUrl + "/files/share");
+    QNetworkRequest request_share_metadata(shareMetadataUrl);
+    request_share_metadata.setRawHeader("Authorization", "Bearer " + jwtToken);
+    request_share_metadata.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QSslConfiguration sslConfig_share_metadata = QSslConfiguration::defaultConfiguration(); // Renamed for clarity
+    request_share_metadata.setSslConfiguration(sslConfig_share_metadata);
+
+    qDebug() << "Sharing metadata to URL:" << shareMetadataUrl.toString() << "Payload:" << jsonDataForShare;
+    currentRequestType = ShareMetadata;
+    currentReply = networkManager->post(request_share_metadata, jsonDataForShare);
+
+    connect(currentReply, &QNetworkReply::finished, this, &uploadManager::handleMetadataShareFinished);
+    connect(currentReply, &QNetworkReply::sslErrors, this, &uploadManager::handleSslErrors);
+    connect(currentReply, &QNetworkReply::errorOccurred, this, &uploadManager::handleNetworkError);
+}
+
+void uploadManager::handleMetadataShareFinished() // Handles reply from /files/share
+{
+    if (!currentReply) {
+        qWarning() << "handleMetadataShareFinished called with null currentReply";
+        emit uploadFailed("Internal error: Metadata share reply is null.");
+        return;
+    }
+
+    QByteArray responseData_metadataShare = currentReply->readAll();
+    QNetworkReply::NetworkError error_metadataShare = currentReply->error();
+    QString errorString_metadataShare = currentReply->errorString();
+
+    if (error_metadataShare == QNetworkReply::NoError) {
+        qDebug() << "Step 2 Success (Metadata Share). Server response:" << responseData_metadataShare;
+        emit uploadSucceeded(responseData_metadataShare); // This is the final success signal
     } else {
-        QString errorMsg = currentReply->errorString();
-        qCritical() << "Upload failed. Error:" << errorMsg << "Server response:" << responseData;
-        emit uploadFailed(errorMsg + " (Server response: " + QString::fromUtf8(responseData) + ")");
+        qCritical() << "Step 2 Failed (Metadata Share). Error:" << errorString_metadataShare << "Server response:" << responseData_metadataShare;
+        emit uploadFailed("File metadata share failed: " + errorString_metadataShare + " (Server response: " + QString::fromUtf8(responseData_metadataShare) + ")");
     }
 
     currentReply->deleteLater();
     currentReply = nullptr;
 }
+
 void uploadManager::handleSslErrors(const QList<QSslError> &errors)
 {
     QString errorString;

@@ -354,7 +354,8 @@ void UploadPage::proceedWithEncryption(){
 
     EphemeralKeyPair ephemeralKeyPair;
     const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
-    const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
+    const unsigned char* senderEphemeralPublicKeyBytes  = ephemeralKeyPair.getPublicKey().data();
+    selectedFile.senderEphemeralPublicKey = QByteArray(reinterpret_cast<const char*>(senderEphemeralPublicKeyBytes), crypto_box_PUBLICKEYBYTES); // Store it
 
     // Get KEK from SessionManager
     QByteArray kek = SessionManager::getInstance()->getDecryptedKEK();
@@ -486,8 +487,16 @@ void UploadPage::on_uploadButton_clicked() {
     const auto& selectedFile = files[selectedFileIndex];
     
     qDebug() << "Calling uploader->uploadFile with UUID:" << selectedFile.uuid << "and Filename:" << selectedFile.fileName;
-    // Pass the encrypted data, file UUID, and original filename
-    uploader->uploadFile(selectedFile.encryptedData, selectedFile.uuid, selectedFile.fileName);
+    // Pass the encrypted data, file UUID, original filename, and new metadata fields
+    uploader->uploadFile(
+        selectedFile.encryptedData, 
+        selectedFile.uuid, 
+        selectedFile.fileName,
+        this->currentUsername,                       // recipient_username
+        selectedFile.senderEphemeralPublicKey,       // ephemeral_key (raw bytes)
+        selectedFile.encryptedMetadata,              // encrypted_file_metadata (raw bytes)
+        selectedFile.metadataNonce                   // encrypted_metadata_nonce (raw bytes)
+    );
 }
 
 void UploadPage::on_backButton_clicked() {
