@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include <QSslError>
 #include <QNetworkReply>
+#include <QUrlQuery>
 
 class uploadManager : public QObject
 {
@@ -16,12 +17,12 @@ public:
 
     void setServerUrl(const QString &url);
     bool requestRecipientKeys(const QString& username);
-    bool uploadFile(const QByteArray &fileData, const QByteArray &EncryptedDek); //the filepath might have to be changed to a QByteArray if we want to send the file contents directly
+    bool uploadFile(const QByteArray &encryptedData, const QString &file_uuid, const QString &originalFileName);
 
 signals:
     void recipientKeysFailed(const QString &error);
     void recipientKeysReceived(const QByteArray &data);
-    void uploadSucceeded(const QByteArray &EncryptedDek);
+    void uploadSucceeded(const QByteArray &serverResponse);
     void uploadFailed(const QString &error);
     void uploadProgress(qint64 bytesSent, qint64 bytesTotal);
     void sslError(const QString &error);
@@ -41,10 +42,12 @@ private:
     QNetworkReply *currentReply;
     QNetworkAccessManager *networkManager;
 
-    enum RequestType {
+    // Enum to track the type of the current network operation
+    enum RequestType_ {
         RetrieveKeys,
         SendFile
-    } currentRequestType;
+    };
+    RequestType_ currentRequestType;
 
 };
 

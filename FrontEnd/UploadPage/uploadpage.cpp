@@ -84,10 +84,25 @@ UploadPage::UploadPage(QWidget *parent) :
     ui->uploadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
     ui->encryptButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
 
-    uploader->setServerUrl("https://leftovers.gobbler.info:3333");
+    uploader->setServerUrl("https://leftovers.gobbler.info");
 
-    connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
-        QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
+    connect(uploader, &uploadManager::uploadSucceeded, this, [=](const QByteArray &serverResponse) {
+        qDebug() << "UploadPage received uploadSucceeded with server response:" << serverResponse;
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(serverResponse, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            QJsonObject jsonObj = jsonDoc.object();
+            QString message = jsonObj.value("message").toString("File uploaded successfully.");
+            QString clientUuid = jsonObj.value("client_uuid").toString();
+            int fileIdInDb = jsonObj.value("file_id_in_db").toInt(-1);
+            qDebug() << "Server message:" << message << "Client UUID:" << clientUuid << "DB File ID:" << fileIdInDb;
+            QMessageBox::information(this, "Upload Success", message);
+        } else {
+            qDebug() << "Failed to parse successful upload response or not a JSON object. Raw response:" << serverResponse;
+            QMessageBox::information(this, "Upload Success", "File uploaded, but server response was not in expected JSON format.");
+        }
+        // Potentially reset UI elements or navigate away
+        updateButtonStates(); // Re-evaluate button states
     });
 
     connect(uploader, &uploadManager::uploadFailed, this, [=](const QString &error) {
@@ -466,11 +481,15 @@ void UploadPage::proceedWithEncryption(){
 
 void UploadPage::on_uploadButton_clicked() {
     if (selectedFileIndex >= files.size() || !files[selectedFileIndex].isEncrypted) {
+        QMessageBox::warning(this, "Upload Error", "Please select an encrypted file to upload.");
         return;
     }
 
     const auto& selectedFile = files[selectedFileIndex];
-    uploader->uploadFile(selectedFile.encryptedData, selectedFile.encryptedMetadata);
+    
+    qDebug() << "Calling uploader->uploadFile with UUID:" << selectedFile.uuid << "and Filename:" << selectedFile.fileName;
+    // Pass the encrypted data, file UUID, and original filename
+    uploader->uploadFile(selectedFile.encryptedData, selectedFile.uuid, selectedFile.fileName);
 }
 
 void UploadPage::on_backButton_clicked() {
