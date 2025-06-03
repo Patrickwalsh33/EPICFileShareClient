@@ -223,7 +223,7 @@ void printSharedSecret(const unsigned char* secret, size_t length) {
     for (size_t i = 0; i < length; ++i) {
         std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(secret[i]);
     }
-    std::cout << std::dec << std::endl; // Reset formatting back to decimal
+    std::cout << std::dec << std::endl;
 }
 
 void UploadPage::onUsernameChanged(const QString &text) {
@@ -234,15 +234,14 @@ void UploadPage::onUsernameChanged(const QString &text) {
 void UploadPage::handleRecipientKeysResponse(const QByteArray &data) {
     qDebug() << "UploadPage received recipientKeysReceived signal with data:" << data.left(200); 
 
-    // Optional: Restore button state now that the network operation for keys is done
-    // Better to do this after checking parsing success/failure.
+
 
     QJsonParseError parseError;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
         qWarning() << "Failed to parse recipient keys JSON:" << parseError.errorString();
-        // Optionally, inform the user or emit another signal
+
         return;
     }
 
@@ -283,7 +282,7 @@ void UploadPage::handleRecipientKeysResponse(const QByteArray &data) {
         qDebug() << "All recipient keys successfully parsed. Proceeding with encryption.";
         // Restore button text before proceeding or after encryption is fully done in proceedWithEncryption
         ui->encryptButton->setText("Encrypt File"); 
-        // ui->encryptButton->setEnabled(true); // Or keep it disabled if encryption also disables it
+
         
         proceedWithEncryption(); // Call proceedWithEncryption now that keys are ready
     } else {
@@ -304,16 +303,15 @@ void UploadPage::on_encryptButton_clicked()
     }
     qDebug() << "Encrypt button clicked for recipient:" << this->currentUsername;
 
-    // Optional: Provide UI feedback (e.g., disable button, show spinner/message)
+
     ui->encryptButton->setEnabled(false);
-    ui->encryptButton->setText("Fetching keys..."); // Example text change
-    // Consider adding a status label for more detailed feedback if desired
+    ui->encryptButton->setText("Fetching keys...");
+
 
     // Call requestRecipientKeys
     uploader->requestRecipientKeys(this->currentUsername);
 
-    // DO NOT call proceedWithEncryption or check for keys here.
-    // That will happen in handleRecipientKeysResponse after keys are actually received.
+
 }
 
 void UploadPage::proceedWithEncryption(){
