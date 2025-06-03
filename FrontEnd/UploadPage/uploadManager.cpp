@@ -5,6 +5,9 @@
 #include <QSslSocket>
 #include <QSslConfiguration>
 #include <QNetworkReply>
+#include <QUrlQuery>
+
+#include "../SessionManager/SessionManager.h"
 
 
 uploadManager::uploadManager(QObject *parent) : QObject(parent),
@@ -25,6 +28,61 @@ uploadManager::~uploadManager()
 
 void uploadManager::setServerUrl(const QString &url) {
     serverUrl = url;
+}
+
+bool uploadManager::requestRecipientKeys(const QString &username)
+{
+    qDebug() << "Requesting keys for recipient:" << username;
+
+    QByteArray jwtToken = SessionManager::getInstance()->getAccessToken();
+    QString recipientUsername = username;
+
+
+
+    qDebug() << "JWT Token length:" << jwtToken.length();
+    qDebug() << "JWT Token (first 50 chars):" << jwtToken.left(50);
+    qDebug() << "JWT Token is empty:" << jwtToken.isEmpty();
+
+
+    if (username.isEmpty()) {
+        emit recipientKeysFailed("Username cannot be empty.");
+        return false;
+    }
+    setServerUrl("https://leftovers.gobbler.info");
+    qDebug() << "Requesting pre key bundle for:" << recipientUsername;
+
+
+    if (serverUrl.isEmpty()) {
+        emit recipientKeysFailed("Server URL is not set.");
+        return false;
+    }
+
+    // Create URL with username parameter
+    QUrl url(serverUrl + "/users/");
+    QUrlQuery query;
+    query.addQueryItem("username", recipientUsername);
+    url.setQuery(query);
+
+    // Create network request
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", ("Bearer " + jwtToken));
+    qDebug() << "Network request:" << request.url();
+
+    // SSL configuration
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    request.setSslConfiguration(sslConfig);
+
+    // Send GET request
+    currentRequestType = RetrieveKeys;
+    currentReply = networkManager->get(request);
+    qDebug() << "Key Retrieval Sent for:" << recipientUsername;
+
+    connect(currentReply, &QNetworkReply::finished, this , &uploadManager::handleKeysReceived);
+    connect(currentReply, &QNetworkReply::sslErrors, this , &uploadManager::handleSslErrors);
+    connect(currentReply, &QNetworkReply::errorOccurred, this, &uploadManager::handleNetworkError);
+    
+
+    return true;
 }
 
 bool uploadManager::uploadFile(const QByteArray&fileData, const QByteArray &EncryptedDek) {
@@ -48,8 +106,6 @@ bool uploadManager::uploadFile(const QByteArray&fileData, const QByteArray &Encr
 
     currentReply = networkManager->post(request, fileData);
 
-    connect(currentReply, &QNetworkReply::uploadProgress,
-            this, &uploadManager::handleUploadProgress);
     connect(currentReply, &QNetworkReply::finished,
             this, &uploadManager::handleUploadFinished);
     connect(currentReply, &QNetworkReply::sslErrors,
@@ -59,10 +115,30 @@ bool uploadManager::uploadFile(const QByteArray&fileData, const QByteArray &Encr
     return true;
 }
 
-void uploadManager::handleUploadProgress(qint64 bytesSent, qint64 bytesTotal)
+void uploadManager::handleKeysReceived()
 {
-    emit uploadProgress(bytesSent, bytesTotal);
+    if (!currentReply) {
+        qWarning() << "handleKeysReceived called with null currentReply";
+        return;
+    }
+
+    if (currentReply->error() == QNetworkReply::NoError) {
+        QByteArray responseData = currentReply->readAll();
+        qDebug() << "Keys received:" << responseData;
+        qDebug() << "Recipient keys received successfully. Size:" << responseData.size();
+        // Optionally, you can print part of the data for debugging if it's not too large or sensitive
+        // qDebug() << "Data (first 100 bytes):" << responseData.left(100);
+        emit recipientKeysReceived(responseData);
+    } else {
+        QString errorMsg = currentReply->errorString();
+        qCritical() << "Failed to retrieve recipient keys. Error:" << errorMsg;
+        emit recipientKeysFailed(errorMsg);
+    }
+
+    currentReply->deleteLater();
+    currentReply = nullptr;
 }
+
 
 void uploadManager::handleUploadFinished()
 {

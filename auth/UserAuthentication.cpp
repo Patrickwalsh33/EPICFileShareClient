@@ -517,10 +517,13 @@ void UserAuthentication::handleLoginResponse()
                 // Step 2: Convert the QString to a QByteArray (UTF-8 encoded)
                 QByteArray accessTokenByteArray = accessTokenQString.toUtf8();
 
+                SessionManager::getInstance()->setAccessToken(accessTokenByteArray);
+
                 // Step 3: Convert the QByteArray to a std::string
                 std::string accessTokenStdString = accessTokenByteArray.toStdString();
 
                 std::cout << accessTokenStdString << std::endl;
+
 
                 QByteArray rawAccessToken = jsonObj["access_token"].toVariant().toByteArray();
                 // qDebug() << "Access Token:" << accessToken;
