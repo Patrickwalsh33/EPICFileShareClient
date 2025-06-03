@@ -520,6 +520,10 @@ void UserAuthentication::handleLoginResponse()
     currentReply = nullptr;
 }
 
+QString UserAuthentication::getAccessToken() const {
+    return m_accessToken;
+}
+
 void UserAuthentication::handleSslErrors(const QList<QSslError> &errors) {
     qDebug() << "handleSslErrors triggered.";
     for (const QSslError &error : errors) {

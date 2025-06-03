@@ -34,6 +34,7 @@ public:
     
     // Network methods
     void setServerUrl(const QString &url);
+    QString getAccessToken() const;
 
 
 signals:
