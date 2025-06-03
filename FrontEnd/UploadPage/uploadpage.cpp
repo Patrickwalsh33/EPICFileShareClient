@@ -330,6 +330,7 @@ void UploadPage::on_encryptButton_clicked()
 }
 
 void UploadPage::proceedWithEncryption(){
+    qDebug() << "Proceeding with encryption for selected file index:" << selectedFileIndex;
     if (selectedFileIndex >= files.size() || files[selectedFileIndex].isEncrypted) {
         return;
     }
@@ -355,18 +356,6 @@ void UploadPage::proceedWithEncryption(){
     const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
     const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
 
-    IdentityKeyPair identityKeyPair;
-    const unsigned char* receiverIDPublicKey = identityKeyPair.getPublicKey().data();
-    const unsigned char* receiverIDPrivKey = identityKeyPair.getPrivateKey().data();
-
-
-    SignedPreKeyPair signedPreKeyPair(identityKeyPair.getPrivateKey());
-    const unsigned char* receiverSignedPrekeyPub = signedPreKeyPair.getPublicKey().data();
-    const unsigned char* receiverSignedPrekeySig = signedPreKeyPair.getSignature().data();
-
-
-
-
     // Get KEK from SessionManager
     QByteArray kek = SessionManager::getInstance()->getDecryptedKEK();
     if (kek.isEmpty()) {
@@ -382,7 +371,16 @@ void UploadPage::proceedWithEncryption(){
     std::vector<unsigned char> SenderPrivIDKey = kekManager.decryptStoredPrivateIdentityKey(kekVector);
     const unsigned char* senderId = SenderPrivIDKey.data();
 
+    QByteArray identityKeyBytes = QByteArray::fromBase64(this->recipientIdentityKey_.toUtf8());
+    QByteArray signedPreKeyBytes = QByteArray::fromBase64(this->recipientSignedPreKey_.toUtf8());
+    QByteArray preKeySigBytes = QByteArray::fromBase64(this->recipientPreKeySignature_.toUtf8());
 
+    if (identityKeyBytes.size() != crypto_sign_PUBLICKEYBYTES ||
+        signedPreKeyBytes.size() != crypto_scalarmult_BYTES ||
+        preKeySigBytes.size() != crypto_sign_BYTES) {
+        qCritical() << "Key size mismatch! Aborting.";
+        return;
+    }
 
 
     unsigned char sharedSecret[crypto_generichash_BYTES]; // 32 bytes
@@ -391,9 +389,9 @@ void UploadPage::proceedWithEncryption(){
             sizeof(sharedSecret),
             senderEphemeralPrivateKey,
             senderId,
-            receiverIDPublicKey,
-            receiverSignedPrekeyPub,
-            receiverSignedPrekeySig);
+            reinterpret_cast<const unsigned char*>(identityKeyBytes.constData()),
+            reinterpret_cast<const unsigned char*>(signedPreKeyBytes.constData()),
+            reinterpret_cast<const unsigned char*>(preKeySigBytes.constData()));
 
     if (success) {
         printSharedSecret(sharedSecret, crypto_generichash_BYTES);
