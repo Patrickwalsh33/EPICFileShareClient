@@ -10,16 +10,15 @@
 static const std::string package1 = "leftovers.project";
 static const std::string user1 = "tempUser"; //default user
 
-// Constructor: Initializes the LoginPage dialog and sets up the UI from login.ui.
 LoginPage::LoginPage(QWidget *parent) :
     QDialog(parent), //initalise parent
     ui(new Ui::LoginPage) {
 
     ui->setupUi(this);
     ui->errorLabel->clear();
-    ui->errorLabel->setVisible(false); // Hide error label initially
 
-    //create authenticaion handler with password validation
+    ui->errorLabel->setVisible(false); // This hides the error label
+
     userauthentication = new UserAuthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1, this);
     connect(userauthentication, &UserAuthentication::loginSucceeded,
             this, &LoginPage::handleLoginSucceeded);

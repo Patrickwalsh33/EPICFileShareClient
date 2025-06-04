@@ -84,10 +84,25 @@ UploadPage::UploadPage(QWidget *parent) :
     ui->uploadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
     ui->encryptButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 5px; font-size: 14px;");
 
-    uploader->setServerUrl("https://leftovers.gobbler.info:3333");
+    uploader->setServerUrl("https://leftovers.gobbler.info");
 
-    connect(uploader, &uploadManager::uploadSucceeded, this, [=]() {
-        QMessageBox::information(this, "Upload Success", "File uploaded successfully.");
+    connect(uploader, &uploadManager::uploadSucceeded, this, [=](const QByteArray &serverResponse) {
+        qDebug() << "UploadPage received uploadSucceeded with server response:" << serverResponse;
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(serverResponse, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            QJsonObject jsonObj = jsonDoc.object();
+            QString message = jsonObj.value("message").toString("File uploaded successfully.");
+            QString clientUuid = jsonObj.value("client_uuid").toString();
+            int fileIdInDb = jsonObj.value("file_id_in_db").toInt(-1);
+            qDebug() << "Server message:" << message << "Client UUID:" << clientUuid << "DB File ID:" << fileIdInDb;
+            QMessageBox::information(this, "Upload Success", message);
+        } else {
+            qDebug() << "Failed to parse successful upload response or not a JSON object. Raw response:" << serverResponse;
+            QMessageBox::information(this, "Upload Success", "File uploaded, but server response was not in expected JSON format.");
+        }
+        // Potentially reset UI elements or navigate away
+        updateButtonStates(); // Re-evaluate button states
     });
 
     connect(uploader, &uploadManager::uploadFailed, this, [=](const QString &error) {
@@ -315,6 +330,7 @@ void UploadPage::on_encryptButton_clicked()
 }
 
 void UploadPage::proceedWithEncryption(){
+    qDebug() << "Proceeding with encryption for selected file index:" << selectedFileIndex;
     if (selectedFileIndex >= files.size() || files[selectedFileIndex].isEncrypted) {
         return;
     }
@@ -338,19 +354,8 @@ void UploadPage::proceedWithEncryption(){
 
     EphemeralKeyPair ephemeralKeyPair;
     const unsigned char* senderEphemeralPrivateKey = ephemeralKeyPair.getPrivateKey().data();
-    const unsigned char* senderEphemeralPublicKey  = ephemeralKeyPair.getPublicKey().data();
-
-    IdentityKeyPair identityKeyPair;
-    const unsigned char* receiverIDPublicKey = identityKeyPair.getPublicKey().data();
-    const unsigned char* receiverIDPrivKey = identityKeyPair.getPrivateKey().data();
-
-
-    SignedPreKeyPair signedPreKeyPair(identityKeyPair.getPrivateKey());
-    const unsigned char* receiverSignedPrekeyPub = signedPreKeyPair.getPublicKey().data();
-    const unsigned char* receiverSignedPrekeySig = signedPreKeyPair.getSignature().data();
-
-
-
+    const unsigned char* senderEphemeralPublicKeyBytes  = ephemeralKeyPair.getPublicKey().data();
+    selectedFile.senderEphemeralPublicKey = QByteArray(reinterpret_cast<const char*>(senderEphemeralPublicKeyBytes), crypto_box_PUBLICKEYBYTES); // Store it
 
     // Get KEK from SessionManager
     QByteArray kek = SessionManager::getInstance()->getDecryptedKEK();
@@ -367,7 +372,16 @@ void UploadPage::proceedWithEncryption(){
     std::vector<unsigned char> SenderPrivIDKey = kekManager.decryptStoredPrivateIdentityKey(kekVector);
     const unsigned char* senderId = SenderPrivIDKey.data();
 
+    QByteArray identityKeyBytes = QByteArray::fromBase64(this->recipientIdentityKey_.toUtf8());
+    QByteArray signedPreKeyBytes = QByteArray::fromBase64(this->recipientSignedPreKey_.toUtf8());
+    QByteArray preKeySigBytes = QByteArray::fromBase64(this->recipientPreKeySignature_.toUtf8());
 
+    if (identityKeyBytes.size() != crypto_sign_PUBLICKEYBYTES ||
+        signedPreKeyBytes.size() != crypto_scalarmult_BYTES ||
+        preKeySigBytes.size() != crypto_sign_BYTES) {
+        qCritical() << "Key size mismatch! Aborting.";
+        return;
+    }
 
 
     unsigned char sharedSecret[crypto_generichash_BYTES]; // 32 bytes
@@ -376,9 +390,9 @@ void UploadPage::proceedWithEncryption(){
             sizeof(sharedSecret),
             senderEphemeralPrivateKey,
             senderId,
-            receiverIDPublicKey,
-            receiverSignedPrekeyPub,
-            receiverSignedPrekeySig);
+            reinterpret_cast<const unsigned char*>(identityKeyBytes.constData()),
+            reinterpret_cast<const unsigned char*>(signedPreKeyBytes.constData()),
+            reinterpret_cast<const unsigned char*>(preKeySigBytes.constData()));
 
     if (success) {
         printSharedSecret(sharedSecret, crypto_generichash_BYTES);
@@ -466,11 +480,23 @@ void UploadPage::proceedWithEncryption(){
 
 void UploadPage::on_uploadButton_clicked() {
     if (selectedFileIndex >= files.size() || !files[selectedFileIndex].isEncrypted) {
+        QMessageBox::warning(this, "Upload Error", "Please select an encrypted file to upload.");
         return;
     }
 
     const auto& selectedFile = files[selectedFileIndex];
-    uploader->uploadFile(selectedFile.encryptedData, selectedFile.encryptedMetadata);
+    
+    qDebug() << "Calling uploader->uploadFile with UUID:" << selectedFile.uuid << "and Filename:" << selectedFile.fileName;
+    // Pass the encrypted data, file UUID, original filename, and new metadata fields
+    uploader->uploadFile(
+        selectedFile.encryptedData, 
+        selectedFile.uuid, 
+        selectedFile.fileName,
+        this->currentUsername,                       // recipient_username
+        selectedFile.senderEphemeralPublicKey,       // ephemeral_key (raw bytes)
+        selectedFile.encryptedMetadata,              // encrypted_file_metadata (raw bytes)
+        selectedFile.metadataNonce                   // encrypted_metadata_nonce (raw bytes)
+    );
 }
 
 void UploadPage::on_backButton_clicked() {

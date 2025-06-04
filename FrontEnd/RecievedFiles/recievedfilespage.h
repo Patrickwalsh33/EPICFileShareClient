@@ -19,10 +19,21 @@ struct ReceivedFileInfo {
     QString fileName;
     QString sender;
     qint64 fileSize;
-    QByteArray encryptedData;
-    QByteArray decryptedData;
-    bool isDecrypted = false;
-    bool isDownloaded = false; // Potentially useful later
+    QByteArray encryptedData;       // This would be the actual encrypted file content
+    QByteArray decryptedData;       // To store data after actual decryption of content
+    QByteArray encryptedMetadata;   // Assuming metadata is also received encrypted
+    QByteArray metadataNonce;       // Nonce for metadata decryption
+    QByteArray fileNonce;           // Nonce for file content decryption (if separate)
+
+    // Keys related to X3DH and key derivation
+    QByteArray senderEphemeralPublicKey; // EK_sender_pub
+    QByteArray senderIdentityPublicKeyEd;  // ID_sender_pub_Ed (fetched or part of pre-bundle)
+    QByteArray derivedDecryptionKey;     // The final key for decrypting file content/metadata
+
+    QString decryptedMetadataJsonString; // To store the decrypted metadata
+
+    bool isDecrypted = false;       // Status: if derivedDecryptionKey is available and metadata potentially decrypted
+    bool isDownloaded = false;
     int index; // To identify the file in the QVector
 
     // UI elements associated with this file

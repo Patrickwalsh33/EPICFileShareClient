@@ -6,10 +6,20 @@
 #include "Testing/X3DHTest.h"
 #include "key_management/DataEncryptionKey.h"
 #include "crypto/crypto_utils.h"
+#include <QtNetwork/QNetworkAccessManager>
+#include "Testing/authenticationTests.h"
+#include "Testing/networkTests.h"
+
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    QNetworkAccessManager networkManager;
+    networkTests::runAllNetworkTests(&networkManager);
+
+    AuthenticationTests::runAllTests();
+
 
     LandingPage landingPage;
     landingPage.show();
