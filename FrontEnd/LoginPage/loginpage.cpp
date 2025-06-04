@@ -81,9 +81,7 @@ void LoginPage::handleLoginSucceeded(const QString &username)
 
 
 // Slot for handling the backToLandingButton's clicked signal.
-void LoginPage::on_backToLandingButton_clicked()
-{
-    qDebug() << "backToLandingButton_clicked from LoginPage";
+void LoginPage::on_backToLandingButton_clicked() {
     LandingPage landingDialog(nullptr);
     landingDialog.setAttribute(Qt::WA_DeleteOnClose);
     this->accept(); // Close LoginPage

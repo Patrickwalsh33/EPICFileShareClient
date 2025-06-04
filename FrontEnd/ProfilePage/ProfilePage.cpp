@@ -3,27 +3,28 @@
 #include <QDebug>
 
 ProfilePage::ProfilePage(const QString &username, QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::ProfilePage),
-    currentUsername(username)
+    QDialog(parent),       //initalise parent class first
+    ui(new Ui::ProfilePage),     //create ui object
+    currentUsername(username)      //store the username passed in
 {
-    ui->setupUi(this);
-    ui->messageLabel->setText("");
+    ui->setupUi(this);      //setup ui 
+    ui->messageLabel->setText("");       //clear any initial message
     
     // Initialize password checking components
-    passwordChecker = new CommonPasswordChecker();
-    passwordValidator = new PasswordValidator(passwordChecker);
-    userAuth = new UserAuthentication(passwordValidator, package, user, this);
+    passwordChecker = new CommonPasswordChecker();       //creates password checker
+    passwordValidator = new PasswordValidator(passwordChecker);      //create validator
+    userAuth = new UserAuthentication(passwordValidator, package, user, this);    //create authentication
 }
 
-ProfilePage::~ProfilePage()
-{
+//destructor
+ProfilePage::~ProfilePage(){
     delete ui;
     delete passwordChecker;
     delete passwordValidator;
     delete userAuth;
 }
 
+//updates message label with green and red colors
 void ProfilePage::updateMessageLabel(const QString& message, bool isError)
 {
     ui->messageLabel->setText(message);
@@ -34,8 +35,10 @@ void ProfilePage::updateMessageLabel(const QString& message, bool isError)
     }
 }
 
+// slot that handles change password button
 void ProfilePage::on_changePasswordButton_clicked()
 {
+     //get username and password from ui. -> is used to a passwordLineEdit. calls text() to retrieve content
     QString oldPassword = ui->oldPasswordLineEdit->text();
     QString newPassword = ui->newPasswordLineEdit->text();
     QString confirmNewPassword = ui->confirmPasswordLineEdit->text();
