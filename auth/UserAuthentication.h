@@ -73,7 +73,6 @@ private:
 
     QNetworkAccessManager *networkManager;
     QNetworkReply *currentReply;
-    // RequestType currentRequestType;
     QString serverUrl;
     QString m_currentUsername; // To store username across async calls
     QString m_originalNonceBase64; // To store the original nonce string
@@ -90,5 +89,4 @@ private:
         Challenge,
         Login
     } currentRequestType;
-    // TODO: Add database connection or storage mechanism
 };

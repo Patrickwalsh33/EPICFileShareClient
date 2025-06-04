@@ -1,12 +1,12 @@
 #include "DecryptionManager.h"
 #include <sodium.h>
-#include <iostream> // For error logging if needed
-#include <vector>   // For converting QByteArray to std::vector for C-style APIs
+#include <iostream>
+#include <vector>
 
 DecryptionManager::DecryptionManager() {
     if (sodium_init() < 0) {
         std::cerr << "[DecryptionManager] libsodium initialization failed." << std::endl;
-        // Consider throwing an exception or setting an error state
+
     }
 }
 
@@ -23,8 +23,8 @@ QByteArray DecryptionManager::deriveFileDecryptionKey(
         return QByteArray();
     }
 
-    // 1. Derive Shared Secret using X3DH receiver logic
-    unsigned char sharedSecret[crypto_generichash_BYTES]; // As per X3DH_sender.cpp, output is crypto_generichash_BYTES
+    // Derive Shared Secret using X3DH receiver logic
+    unsigned char sharedSecret[crypto_generichash_BYTES];
 
     bool x3dh_success = x3dh_receiver_derive_shared_secret(
         sharedSecret,
@@ -41,19 +41,13 @@ QByteArray DecryptionManager::deriveFileDecryptionKey(
     }
 
     std::cout << "[DecryptionManager] X3DH shared secret derived successfully." << std::endl;
-    // You might want to print the shared secret here for debugging, similar to printSharedSecret in UploadPage
 
-    // 2. Derive the final key from the shared secret (mirroring sender's logic)
+    //Derive the final key from the shared secret (mirroring sender's logic)
     unsigned char derivedKey[crypto_aead_chacha20poly1305_ietf_KEYBYTES];
     const char context[8] = "X3DHKEY"; // Same context as sender
     uint64_t subkey_id = 1;            // Same subkey_id as sender
 
-    // Assuming derive_key_from_shared_secret is available from crypto_utils.h
-    // and has a signature like: 
-    // bool derive_key_from_shared_secret(const unsigned char* shared_secret, 
-    //                                    unsigned char* out_key, 
-    //                                    const char* context, 
-    //                                    uint64_t subkey_id);
+
     bool derivation_success = derive_key_from_shared_secret(
         sharedSecret,       // Input shared secret from X3DH
         derivedKey,         // Output buffer for the derived key
@@ -104,8 +98,8 @@ QString DecryptionManager::decryptFileMetadata(
             nullptr, // nsec (not used in encryption, so nullptr here)
             reinterpret_cast<const unsigned char*>(encryptedMetadata.constData()),
             encryptedMetadata.size(),
-            nullptr, // ad (associated data - assuming none was used during encryption)
-            0,       // adlen
+            nullptr,
+            0,
             reinterpret_cast<const unsigned char*>(metadataNonce.constData()),
             reinterpret_cast<const unsigned char*>(decryptionKey.constData())
         ) != 0) {
@@ -135,7 +129,7 @@ QByteArray DecryptionManager::decryptFileData(
     }
     if (encryptedData.isEmpty()) {
         qCritical() << "[DecryptionManager] Encrypted file data is empty.";
-        return QByteArray(); // Or handle as appropriate
+        return QByteArray();
     }
 
     std::vector<unsigned char> decrypted_data_vec(encryptedData.size() - crypto_aead_chacha20poly1305_ietf_ABYTES);
@@ -143,14 +137,14 @@ QByteArray DecryptionManager::decryptFileData(
 
     if (crypto_aead_chacha20poly1305_ietf_decrypt(
             decrypted_data_vec.data(), &decrypted_len,
-            nullptr, // No ciphertext pointer for separate MAC
+            nullptr,
             reinterpret_cast<const unsigned char*>(encryptedData.constData()), encryptedData.size(),
-            nullptr, 0, // No AAD
+            nullptr, 0,
             reinterpret_cast<const unsigned char*>(fileNonce.constData()),
             reinterpret_cast<const unsigned char*>(dek.constData())
         ) != 0) {
         qWarning() << "[DecryptionManager] File data decryption failed (e.g., MAC mismatch).";
-        return QByteArray(); // Decryption failed
+        return QByteArray();
     }
 
     decrypted_data_vec.resize(decrypted_len);
