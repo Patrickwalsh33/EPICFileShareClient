@@ -86,6 +86,8 @@ add_executable(MyQtApp
         auth/RateLimiter.h
         Backend/Decryption/DecryptionManager.cpp
         Backend/Decryption/DecryptionManager.h
+        FrontEnd/ReceivedFilesPage/receivedfilesmanager.cpp
+        FrontEnd/ReceivedFilesPage/receivedfilesmanager.h
 )
 
 target_include_directories(MyQtApp PRIVATE
