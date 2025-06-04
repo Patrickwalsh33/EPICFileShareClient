@@ -3,6 +3,7 @@
 #include <QTextStream>
 #include <QDebug>
 
+//constructor
 CommonPasswordChecker::CommonPasswordChecker() {
     commonPasswords = loadCommonPasswordsFromCSV();
     qDebug() << "Loaded" << commonPasswords.size() << "common passwords"; //should be about 10000
@@ -38,10 +39,12 @@ QStringList CommonPasswordChecker::loadCommonPasswordsFromCSV(){
     return passwords;
 }
 
+//returns true if password is common
 bool CommonPasswordChecker::isCommonPassword(const QString& password) {
     return commonPasswords.contains(password.toLower());
 }
 
+//returns size of password lsit
 int CommonPasswordChecker::getPasswordCount() const {
     return commonPasswords.size();
 }

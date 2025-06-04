@@ -1,14 +1,16 @@
 #ifndef RECIEVEDFILESPAGE_H
 #define RECIEVEDFILESPAGE_H
 
-#include <QDialog>
-#include <QVector>
-#include <QString>
-#include <QByteArray>
-#include <QLabel>
-#include <QFrame>
-#include "../ReceivedFilesPage/receivedfilesmanager.h"
 
+#include "../ReceivedFilesPage/receivedfilesmanager.h"
+#include <QDialog>     //Base class for dialog windows in QT
+#include <QVector>     // QT vector class
+#include <QString>      // qt string class
+#include <QByteArray>   //qt byte array
+#include <QLabel>       //qt label class
+#include <QFrame>      //qt frame widget
+
+//prevent naming collisons and are good for organsing code
 namespace Ui {
 class RecievedFilesPage;
 }
@@ -45,13 +47,16 @@ struct ReceivedFileInfo {
 
 class RecievedFilesPage : public QDialog
 {
-    Q_OBJECT
+    Q_OBJECT   //special at macro
 
 public:
+    //constructor
     explicit RecievedFilesPage(QWidget *parent = nullptr);
+    //destructor
     ~RecievedFilesPage();
 
 protected:
+    //overide event fileter to handle mouse clicks
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
@@ -66,8 +71,8 @@ private slots:
     void handleFetchMessagesError(const QString &error);
 
 private:
-    Ui::RecievedFilesPage *ui;
-    QVector<ReceivedFileInfo> receivedFiles;
+    Ui::RecievedFilesPage *ui;    //pointer to ui
+    QVector<ReceivedFileInfo> receivedFiles;  //list of files
     int selectedFileIndex = -1; // Index of the currently selected file, -1 if none
     ReceivedFilesManager *m_receivedFilesManager;
 
@@ -77,4 +82,4 @@ private:
     QString formatFileSize(qint64 size); // Helper for formatting file size
 };
 
-#endif // RECIEVEDFILESPAGE_H 
+#endif

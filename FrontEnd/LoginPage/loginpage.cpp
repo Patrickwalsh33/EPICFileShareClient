@@ -8,48 +8,40 @@
 
 
 static const std::string package1 = "leftovers.project";
-static const std::string user1 = "tempUser";
+static const std::string user1 = "tempUser"; //default user
 
 LoginPage::LoginPage(QWidget *parent) :
-    QDialog(parent),
-
-    ui(new Ui::LoginPage)
-
-
-{
+    QDialog(parent), //initalise parent
+    ui(new Ui::LoginPage) {
 
     ui->setupUi(this);
     ui->errorLabel->clear();
+
     ui->errorLabel->setVisible(false); // This hides the error label
+
     userauthentication = new UserAuthentication(new PasswordValidator(new CommonPasswordChecker()), package1, user1, this);
     connect(userauthentication, &UserAuthentication::loginSucceeded,
             this, &LoginPage::handleLoginSucceeded);
 }
 
-// Destructor: Deletes the UI object to free resources.
-LoginPage::~LoginPage()
-{
+// Destructor: 
+LoginPage::~LoginPage() {
     delete ui;
 }
 
 // Slot for handling the loginButton's clicked signal.
 void LoginPage::on_loginButton_clicked(){
 
-    qDebug() << "loginButton_clicked";
-
+    //get username and password from ui. -> is used to a passwordLineEdit. calls text() to retrieve content
     QString username = ui->usernameLineEdit->text();
     QString password = ui->passwordLineEdit->text();
-
-    qDebug() << "Attempting login for user:" << username;
 
     // Create UserAuthentication with proper parameters
     PasswordValidator* validator = new PasswordValidator(new CommonPasswordChecker());
     UserAuthentication auth(validator, package1, user1, this);
     QString errorMsg;
-    if (!userauthentication->loginUser(username, password, errorMsg))
-    {
-        qDebug() << "Initial login flow setup failed synchronously."
-        << errorMsg;
+    if (!userauthentication->loginUser(username, password, errorMsg)) {
+        qDebug() << "Initial login flow setup failed synchronously:" << errorMsg;
         ui->loginButton->setEnabled(true);
         ui->errorLabel->setText(errorMsg);
         ui->errorLabel->setVisible(true);
@@ -59,47 +51,35 @@ void LoginPage::on_loginButton_clicked(){
     // Clean up
     delete validator;
 
+    //update UI state afrer login attempt
     ui->loginButton->setEnabled(false);
     ui->errorLabel->clear();
     ui->errorLabel->setVisible(false);
 
 }
+
+//handles login called when authentication emits loginSucceded
 void LoginPage::handleLoginSucceeded(const QString &username)
 {
-    qDebug() << "Login Successful for user:" << username;
-
-
+    //reset ui elements
     ui->loginButton->setEnabled(true);
     ui->errorLabel->clear();
     ui->errorLabel->setVisible(false);
 
+    //close login with success status
+    this->accept(); 
 
-
-    this->accept(); // This closes the modal dialog and returns QDialog::Accepted
-
-
+    //create and show homepage
     HomePage *homePage = new HomePage(username, nullptr); // Create a new HomePage instance
-
     homePage->setAttribute(Qt::WA_DeleteOnClose); // Ensures the HomePage object is deleted
-
     homePage->exec();
 }
 
 
 
 
-
-
-
-
-
-// Slot for handling the goToRegistationButton's clicked signal.
-
-
 // Slot for handling the backToLandingButton's clicked signal.
-void LoginPage::on_backToLandingButton_clicked()
-{
-    qDebug() << "backToLandingButton_clicked from LoginPage";
+void LoginPage::on_backToLandingButton_clicked() {
     LandingPage landingDialog(nullptr);
     landingDialog.setAttribute(Qt::WA_DeleteOnClose);
     this->accept(); // Close LoginPage

@@ -1,22 +1,25 @@
 #ifndef PROFILEPAGE_H
 #define PROFILEPAGE_H
 
-#include <QDialog>
-#include <QString>
+#include <QDialog> //Base class for dialog
+#include <QString> 
 #include "../../auth/UserAuthentication.h"
 #include "../../auth/validation.h"
 #include "../../auth/CommonPasswordChecker.h"
 
-namespace Ui {
-class ProfilePage;
+namespace Ui { //prevent naming collisons and are good for organsing code
+class ProfilePage; 
 }
 
 class ProfilePage : public QDialog
 {
-    Q_OBJECT
+    Q_OBJECT // qt macro that enables signals and slots
 
 public:
-    explicit ProfilePage(const QString &username, QWidget *parent = nullptr);
+    //constructor
+    explicit ProfilePage(const QString &username, QWidget *parent = nullptr); 
+
+    //destructor
     ~ProfilePage();
 
 private slots:
