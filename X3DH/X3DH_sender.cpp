@@ -17,7 +17,7 @@ bool x3dh_sender_derive_shared_secret(
         return false;
     }
 
-    // === Step 1: Verify signed prekey signature ===
+    //Verify signed prekey signature
     if (crypto_sign_verify_detached(
             receiverSignedPrekeySig,
             receiverSignedPrekeyPub,
@@ -30,20 +30,21 @@ bool x3dh_sender_derive_shared_secret(
 
     std::cout << "[X3DH] Signed prekey signature verified." << std::endl;
 
-    // === Step 2: Convert sender identity Ed25519 key to Curve25519 ===
+    // Convert sender identity Ed25519 key to Curve25519
     unsigned char senderIdentityPrivCurve[crypto_scalarmult_SCALARBYTES];
     if (crypto_sign_ed25519_sk_to_curve25519(senderIdentityPrivCurve, senderIdentityPrivEd) != 0) {
         std::cerr << "[X3DH] Failed to convert Ed25519 secret key to Curve25519." << std::endl;
         return false;
     }
 
+    // Convert receiver identity Ed25519 public key to Curve25519
     unsigned char receiverIdentityPubCurve[crypto_scalarmult_BYTES];
     if (crypto_sign_ed25519_pk_to_curve25519(receiverIdentityPubCurve, receiverIdentityPubEd) != 0) {
         std::cerr << "[X3DH] Failed to convert receiver Ed25519 public key to Curve25519." << std::endl;
         return false;
     }
 
-    // === Step 3: Perform 3 DHs ===
+    // Perform 3 DHs
     unsigned char dh1[crypto_scalarmult_BYTES];
     unsigned char dh2[crypto_scalarmult_BYTES];
     unsigned char dh3[crypto_scalarmult_BYTES];
@@ -55,7 +56,7 @@ bool x3dh_sender_derive_shared_secret(
         return false;
     }
 
-    // === Step 4: Derive shared secret with KDF ===
+    // Derive shared secret with KDF
     unsigned char combined[crypto_generichash_BYTES];
     crypto_generichash_state state;
     crypto_generichash_init(&state, NULL, 0, sizeof(combined));
