@@ -69,6 +69,8 @@ private slots:
     // Slots for handling responses from ReceivedFilesManager
     void handleUnreadMessagesResponse(const QByteArray &serverResponse);
     void handleFetchMessagesError(const QString &error);
+    void handleSenderKeysResponse(const QByteArray &serverResponse); // New slot for sender keys
+    void handleFetchSenderKeysError(const QString &error);      // New slot for sender key errors
 
 private:
     Ui::RecievedFilesPage *ui;    //pointer to ui

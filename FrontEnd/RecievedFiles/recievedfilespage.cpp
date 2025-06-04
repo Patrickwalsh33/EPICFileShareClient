@@ -55,6 +55,11 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
             this, &RecievedFilesPage::handleUnreadMessagesResponse);
     connect(m_receivedFilesManager, &ReceivedFilesManager::fetchMessagesFailed,
             this, &RecievedFilesPage::handleFetchMessagesError);
+    // Setup for ReceivedFilesManager - Sender Keys
+    connect(m_receivedFilesManager, &ReceivedFilesManager::senderKeysReceived,
+            this, &RecievedFilesPage::handleSenderKeysResponse);
+    connect(m_receivedFilesManager, &ReceivedFilesManager::fetchSenderKeysFailed,
+            this, &RecievedFilesPage::handleFetchSenderKeysError);
     // connect(m_receivedFilesManager, &ReceivedFilesManager::sslErrorsSignal, this, &SomeOtherSlotForSslErrors); // Optional: if you want to handle general SSL errors separately
 
     connect(ui->getFilesButton, &QPushButton::clicked, this, &RecievedFilesPage::on_getFilesButton_clicked);
@@ -220,122 +225,27 @@ void RecievedFilesPage::updateButtonStates() {
 //handles decrypt button click
 void RecievedFilesPage::on_decryptButton_clicked()
 {
-    if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size() || receivedFiles[selectedFileIndex].isDecrypted) {
-        qDebug() << "Decrypt button: No valid file selected or file already processed for decryption.";
+    if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
+        qDebug() << "Decrypt button: No file selected.";
+        return;
+    }
+    
+    ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
+
+    if (selectedFile.isDecrypted) {
+        qDebug() << "File already processed and key derived/decryption attempted for:" << selectedFile.fileName;
+        QMessageBox::information(this, "Already Processed", selectedFile.fileName + " has already been processed.");
         return;
     }
 
-    ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
-    qDebug() << "Attempting to process file for decryption:" << selectedFile.fileName;
+    qDebug() << "Decrypt button clicked for file:" << selectedFile.fileName << "from sender:" << selectedFile.sender;
 
-    if (selectedFile.derivedDecryptionKey.isEmpty()) {
-        qDebug() << "Step 1: Retrieving receiver keys and deriving X3DH key for" << selectedFile.fileName;
+    // Disable button and show feedback
+    ui->decryptButton->setEnabled(false);
+    ui->decryptButton->setText("Fetching Sender Keys...");
 
-        // --- KEK Retrieval --- 
-        QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
-        if (kek_qba.isEmpty()) {
-            QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
-            qDebug() << "Failed to retrieve KEK from SessionManager.";
-            return;
-        }
-        qDebug() << "Successfully retrieved KEK from SessionManager.";
-        std::vector<unsigned char> kekVector = toStdVector(kek_qba);
-        // --- End KEK Retrieval ---
-
-        std::string userPackage = "leftovers.project"; 
-        std::string userId = "tempUser"; 
-        KEKManager kekManager(userPackage, userId);
-
-        QByteArray receiverIdentityPrivEd_qba;
-        QByteArray receiverSignedPrekeyPriv_qba;
-
-        try {
-            std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
-            receiverIdentityPrivEd_qba = toQByteArray(receiverIdPrivVec);
-            qDebug() << "Retrieved Receiver Identity Private Key (first 5 bytes):" << receiverIdentityPrivEd_qba.left(5).toHex();
-
-            std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
-            receiverSignedPrekeyPriv_qba = toQByteArray(receiverSpkPrivVec);
-            qDebug() << "Retrieved Receiver Signed PreKey Private Key (first 5 bytes):" << receiverSignedPrekeyPriv_qba.left(5).toHex();
-
-        } catch (const std::runtime_error& e) {
-            QMessageBox::critical(this, "Key Retrieval Error", "Failed to retrieve receiver keys from keychain: " + QString::fromUtf8(e.what()));
-            qDebug() << "Key Retrieval Error:" << e.what();
-            return;
-        }
-        
-        if (receiverIdentityPrivEd_qba.isEmpty() || receiverSignedPrekeyPriv_qba.isEmpty()) {
-             QMessageBox::critical(this, "Key Retrieval Error", "One or more receiver private keys are empty after retrieval.");
-            return;
-        }
-
-        if (selectedFile.senderEphemeralPublicKey.isEmpty() || selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
-            QMessageBox::critical(this, "Decryption Error", "Sender public keys are missing for the selected file.");
-            return;
-        }
-
-        DecryptionManager decryptionManager;
-        selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
-            selectedFile, 
-            receiverIdentityPrivEd_qba, 
-            receiverSignedPrekeyPriv_qba
-        );
-
-        if (selectedFile.derivedDecryptionKey.isEmpty()) {
-            QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
-            return;
-        }
-        qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName << "Key (first 5 bytes):" << selectedFile.derivedDecryptionKey.left(5).toHex();
-    } else {
-         qDebug() << "X3DH key already available for:" << selectedFile.fileName;
-    }
-
-    // Step 2: Decrypt Metadata
-    qDebug() << "Step 2: Decrypting metadata for" << selectedFile.fileName;
-    DecryptionManager decryptionManager; // Can re-use or make manager member if preferred
-    selectedFile.decryptedMetadataJsonString = decryptionManager.decryptFileMetadata(
-        selectedFile.encryptedMetadata,
-        selectedFile.metadataNonce,
-        selectedFile.derivedDecryptionKey
-    );
-
-    if (selectedFile.decryptedMetadataJsonString.isEmpty()) {
-        QMessageBox::warning(this, "Metadata Decryption Failed", 
-                             "Could not decrypt metadata for " + selectedFile.fileName + ". It might be corrupted, or keys might not match the encrypted data.");
-        // Even if metadata decryption fails, we might still mark the key as derived and allow download attempt later
-        // For now, let's not change isDecrypted status if only metadata fails, but key is derived.
-        // The definition of "isDecrypted" might need refinement (key derived vs metadata decrypted vs content decrypted)
-        qDebug() << "Metadata decryption failed for:" << selectedFile.fileName;
-    } else {
-        qDebug() << "Successfully decrypted metadata for:" << selectedFile.fileName;
-        qDebug() << "Decrypted Metadata JSON:" << selectedFile.decryptedMetadataJsonString;
-        // Optionally parse and use metadata
-        QJsonDocument doc = QJsonDocument::fromJson(selectedFile.decryptedMetadataJsonString.toUtf8());
-        if (!doc.isNull() && doc.isObject()) {
-            QJsonObject jsonObj = doc.object();
-            qDebug() << "Parsed metadata - UUID:" << jsonObj.value("uuid").toString() 
-                     << ", Filename:" << jsonObj.value("filename").toString();
-            // You could update UI elements here based on decrypted metadata if needed.
-        } else {
-            qDebug() << "Failed to parse decrypted metadata as JSON.";
-        }
-    }
-
-    // For now, we'll consider the file "decrypted" if the key derivation was successful,
-    // as the metadata might be optional or handled differently. User can attempt download.
-    selectedFile.isDecrypted = !selectedFile.derivedDecryptionKey.isEmpty();
- 
-    if (selectedFile.isDecrypted) {
-         if (selectedFile.displayBox) {
-            selectedFile.statusLabel->setText("Status: Decrypted (Key Ready)"); // Update status
-            selectedFile.statusLabel->setStyleSheet("color: #28a745;");
-            selectedFile.displayBox->setStyleSheet("QFrame { background-color: #d4edda; border: 2px solid #007bff; border-radius: 4px; }");
-        }
-        QMessageBox::information(this, "Processing Complete", 
-                                 selectedFile.fileName + " has been processed. X3DH key is derived. Metadata decryption attempted.");
-    }
-    
-    updateButtonStates();
+    // Request sender's keys. The rest of the decryption logic will be in handleSenderKeysResponse
+    m_receivedFilesManager->requestSenderKeys(selectedFile.sender);
 }
 
 
@@ -454,4 +364,181 @@ void RecievedFilesPage::handleFetchMessagesError(const QString &error)
     ui->getFilesButton->setEnabled(true);
     ui->getFilesButton->setText("Get Files");
     QMessageBox::critical(this, "Error Fetching Messages", error);
+}
+
+// New slot to handle response for sender public keys
+void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverResponse)
+{
+    qDebug() << "Received sender keys response.";
+    ui->decryptButton->setText("Processing Keys..."); // Update UI feedback
+
+    if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
+        qWarning() << "handleSenderKeysResponse called with no file selected.";
+        ui->decryptButton->setEnabled(true); // Re-enable on error
+        ui->decryptButton->setText("Decrypt File");
+        QMessageBox::critical(this, "Error", "No file selected when sender keys response was received.");
+        return;
+    }
+    ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(serverResponse, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse sender keys JSON:" << parseError.errorString();
+        handleFetchSenderKeysError("Failed to parse sender keys: " + parseError.errorString());
+        return;
+    }
+    if (!jsonDoc.isObject()) {
+        qWarning() << "Sender keys JSON is not an object.";
+        handleFetchSenderKeysError("Invalid sender keys response format (not an object).");
+        return;
+    }
+
+    QJsonObject keysObj = jsonDoc.object();
+    // Assuming server returns structure like: {"Public Key": "base64IK", "Public Pre Key": "base64SPK", "Pre Key Signature": "base64Sig"}
+    // This matches the keys needed by X3DH_sender_derive_shared_secret (as receiver)
+    // and what uploadManager::handleRecipientKeysResponse parses.
+    // For X3DH as receiver, we need sender's IDKey_pub, SPK_pub, SPK_sig, and EK_pub.
+    // EK_pub is already in selectedFile.senderEphemeralPublicKey from the message.
+
+    if (keysObj.contains("Public Key") && keysObj["Public Key"].isString()) {
+        selectedFile.senderIdentityPublicKeyEd = QByteArray::fromBase64(keysObj["Public Key"].toString().toUtf8());
+        qDebug() << "Parsed Sender Identity Key (Public Key).";
+    } else {
+        handleFetchSenderKeysError("Sender keys JSON missing or invalid 'Public Key'.");
+        return;
+    }
+
+    // Note: The X3DH receiver function (x3dh_receiver_derive_shared_secret) will actually expect:
+    // - Our own identity private key (IDKey_priv_B)
+    // - Our own signed prekey private key (SPKey_priv_B)
+    // - Our own one-time prekey private key (OPKey_priv_B) - if used
+    // - Sender's identity public key (IDKey_pub_A) -> This is senderIdentityPublicKeyEd
+    // - Sender's ephemeral public key (EKey_pub_A) -> This is senderEphemeralPublicKey
+
+    // The bundle from /users/ usually contains the sender's signed prekey and its signature too,
+    // but these are primarily for the *sender* to use when *they* initiate X3DH with *us*.
+    // For *us* (receiver) deriving the shared secret with a message *they* sent, 
+    // we primarily need *their* IDKey_pub and *their* EKey_pub.
+    // The DecryptionManager::deriveFileDecryptionKey currently takes sender's ID key and sender's Ephemeral key.
+    // Let's ensure DecryptionManager expects the correct public keys.
+    // The provided DecryptionManager::deriveFileDecryptionKey seems to already expect this.
+    
+    if (selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
+        handleFetchSenderKeysError("Failed to extract sender identity public key.");
+        return;
+    }
+
+    qDebug() << "Sender keys parsed. Proceeding with KEK retrieval and X3DH derivation for:" << selectedFile.fileName;
+
+    // --- Now, the original decryption logic from on_decryptButton_clicked --- 
+    ui->decryptButton->setText("Deriving Session Key...");
+
+    QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
+    if (kek_qba.isEmpty()) {
+        QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
+        qDebug() << "Failed to retrieve KEK from SessionManager.";
+        ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
+        return;
+    }
+    std::vector<unsigned char> kekVector = toStdVector(kek_qba);
+
+    std::string userPackage = "leftovers.project"; 
+    std::string userId = "tempUser"; 
+    KEKManager kekManager(userPackage, userId);
+    QByteArray receiverIdentityPrivEd_qba;
+    QByteArray receiverSignedPrekeyPriv_qba; // May not be strictly needed by X3DH receiver side if OPK is used
+                                         // but good to have if full bundle interaction is assumed by KEKManager or local key storage logic
+
+    try {
+        std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
+        receiverIdentityPrivEd_qba = toQByteArray(receiverIdPrivVec);
+        // For X3DH receiver, we might also need our signed prekey private or one-time prekey private.
+        // Assuming DecryptionManager internally handles which of our own private keys to use based on message type (e.g. if it has OPK_ID)
+        // For now, we fetch SPK_priv as it was in original logic.
+        std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
+        receiverSignedPrekeyPriv_qba = toQByteArray(receiverSpkPrivVec);
+
+    } catch (const std::runtime_error& e) {
+        QMessageBox::critical(this, "Key Retrieval Error", "Failed to retrieve your private keys: " + QString::fromUtf8(e.what()));
+        ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
+        return;
+    }
+        
+    if (receiverIdentityPrivEd_qba.isEmpty()) { // Only receiver ID priv key is absolutely essential for receiver X3DH
+         QMessageBox::critical(this, "Key Retrieval Error", "Your private identity key is empty after retrieval.");
+         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
+        return;
+    }
+
+    DecryptionManager decryptionManager;
+    selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
+        selectedFile, // Contains senderEphemeralPublicKey and now senderIdentityPublicKeyEd
+        receiverIdentityPrivEd_qba, 
+        receiverSignedPrekeyPriv_qba // Pass this, DecryptionManager might choose to use it or an OPK if applicable
+    );
+
+    if (selectedFile.derivedDecryptionKey.isEmpty()) {
+        QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
+        ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
+        return;
+    }
+    qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName;
+    ui->decryptButton->setText("Decrypting Metadata...");
+
+    // --- Metadata Decryption ---
+    selectedFile.decryptedMetadataJsonString = decryptionManager.decryptFileMetadata(
+        selectedFile.encryptedMetadata,
+        selectedFile.metadataNonce,
+        selectedFile.derivedDecryptionKey
+    );
+
+    if (selectedFile.decryptedMetadataJsonString.isEmpty()) {
+        QMessageBox::warning(this, "Metadata Decryption Failed", 
+                             "Could not decrypt metadata for " + selectedFile.fileName + ".");
+        qDebug() << "Metadata decryption failed for:" << selectedFile.fileName;
+    } else {
+        qDebug() << "Successfully decrypted metadata for:" << selectedFile.fileName;
+        qDebug() << "Decrypted Metadata JSON:" << selectedFile.decryptedMetadataJsonString;
+        QJsonDocument doc = QJsonDocument::fromJson(selectedFile.decryptedMetadataJsonString.toUtf8());
+        if (!doc.isNull() && doc.isObject()) {
+            QJsonObject jsonObj = doc.object();
+            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName); // Use original if not in metadata
+            if (selectedFile.nameLabel) selectedFile.nameLabel->setText("File: " + actualFilename);
+            // Potentially update selectedFile.fileName itself if needed elsewhere
+        } else {
+            qDebug() << "Failed to parse decrypted metadata as JSON.";
+        }
+    }
+
+    selectedFile.isDecrypted = !selectedFile.derivedDecryptionKey.isEmpty();
+ 
+    if (selectedFile.isDecrypted) {
+         if (selectedFile.displayBox) {
+            selectedFile.statusLabel->setText("Status: Decrypted (Key Ready)");
+            selectedFile.statusLabel->setStyleSheet("color: #28a745;");
+            selectedFile.displayBox->setStyleSheet("QFrame { background-color: #d4edda; border: 2px solid #007bff; border-radius: 4px; }"); // Highlight selected and decrypted
+        }
+        QMessageBox::information(this, "Processing Complete", 
+                                 selectedFile.fileName + " has been processed. X3DH key is derived. Metadata decryption attempted.");
+    } else { // If key derivation failed even after getting sender keys
+        QMessageBox::critical(this, "Decryption Failed", "Failed to complete decryption process for " + selectedFile.fileName);
+    }
+    
+    ui->decryptButton->setEnabled(!selectedFile.isDecrypted); // Disable if successful
+    ui->decryptButton->setText("Decrypt File");
+    updateButtonStates(); // This will correctly enable/disable download button
+}
+
+// New slot to handle errors from sender key fetch
+void RecievedFilesPage::handleFetchSenderKeysError(const QString &error)
+{
+    qDebug() << "Error fetching sender keys:" << error;
+    if (selectedFileIndex >= 0 && selectedFileIndex < receivedFiles.size()) {
+        // Only re-enable if a file is still logically selected
+        ui->decryptButton->setEnabled(true); 
+    }
+    ui->decryptButton->setText("Decrypt File");
+    QMessageBox::critical(this, "Error Fetching Sender Keys", error);
 }

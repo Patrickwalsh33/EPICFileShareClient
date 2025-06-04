@@ -6,6 +6,7 @@
 #include <QSslConfiguration>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QUrlQuery>
 
 ReceivedFilesManager::ReceivedFilesManager(QObject *parent)
     : QObject(parent),
@@ -13,7 +14,7 @@ ReceivedFilesManager::ReceivedFilesManager(QObject *parent)
       currentReply(nullptr),
       serverUrl("") // Initialize serverUrl, can be set via setServerUrl
 {
-    // It's good practice to check for SSL support
+
     if (!QSslSocket::supportsSsl()) {
         qWarning() << "SSL is not supported on this system!";
     }
@@ -25,7 +26,7 @@ ReceivedFilesManager::~ReceivedFilesManager()
         currentReply->abort(); // Abort if a request is in progress
         currentReply->deleteLater();
     }
-    // networkManager is a child of this QObject, Qt should handle its deletion.
+
 }
 
 void ReceivedFilesManager::setServerUrl(const QString &url)
@@ -64,8 +65,7 @@ void ReceivedFilesManager::fetchUnreadMessages()
 
     // Setup SSL configuration (important for HTTPS)
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    // You might need to load CA certificates or set specific SSL protocols if default isn't enough
-    // sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone); // Use for testing only if cert issues
+
     request.setSslConfiguration(sslConfig);
 
     qDebug() << "Fetching unread messages from:" << inboxUrl.toString();
@@ -74,10 +74,7 @@ void ReceivedFilesManager::fetchUnreadMessages()
 
     connect(currentReply, &QNetworkReply::finished, this, &ReceivedFilesManager::handleInboxResponse);
     connect(currentReply, &QNetworkReply::sslErrors, this, &ReceivedFilesManager::handleSslErrors);
-    // Use the new Qt5 signal syntax for errorOccurred if available and preferred
-    // connect(currentReply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred), 
-    //         this, &ReceivedFilesManager::handleNetworkError);
-    // Fallback for broader compatibility or if QOverload is problematic in the env:
+
     connect(currentReply, SIGNAL(errorOccurred(QNetworkReply::NetworkError)), 
             this, SLOT(handleNetworkError(QNetworkReply::NetworkError)));
 }
@@ -117,13 +114,10 @@ void ReceivedFilesManager::handleSslErrors(const QList<QSslError> &errors)
         qDebug() << "SSL Error:" << error.errorString();
         errorString += error.errorString() + "\n";
     }
-    // Depending on policy, you might ignore some errors for testing:
-    // currentReply->ignoreSslErrors(); 
-    // However, it's better to fix SSL issues on the server or client trust store.
+
     emit sslErrorsSignal(errorString); // Emit a general SSL error signal
-    // Optionally also emit fetchMessagesFailed if SSL errors are critical
-    if (currentReply && currentReply->error() != QNetworkReply::NoError) { // If an actual network error code is also set
-         // emit fetchMessagesFailed("SSL Error occurred: " + errorString);
+
+    if (currentReply && currentReply->error() != QNetworkReply::NoError) {
     } else if (!errors.isEmpty()){
         emit fetchMessagesFailed("SSL Error occurred: " + errors.first().errorString());
     }
@@ -137,11 +131,87 @@ void ReceivedFilesManager::handleNetworkError(QNetworkReply::NetworkError errorC
     }
     QString errorString = currentReply->errorString(); // Get error string from the reply
     qCritical() << "Network error occurred:" << errorCode << "-" << errorString;
-    
-    // Avoid double signaling if 'finished' will also report an error.
-    // The 'finished' signal is always emitted, even if an error occurred.
-    // So, we let handleInboxResponse deal with emitting fetchMessagesFailed based on currentReply->error().
-    // This slot is more for logging or specific reactions to network-level errors before 'finished'.
-    // If currentReply is already scheduled for deletion or deleted by 'finished' handler, this might be too late.
-    // It's safer to check currentReply->error() in the 'finished' slot primarily.
+
+}
+
+// New method to request sender's public keys (pre-key bundle)
+bool ReceivedFilesManager::requestSenderKeys(const QString &username)
+{
+    qDebug() << "Requesting sender keys for user:" << username;
+
+    if (serverUrl.isEmpty()) {
+        qWarning() << "Server URL is not set in ReceivedFilesManager for sender key request.";
+        emit fetchSenderKeysFailed("Server URL not configured for sender key request.");
+        return false;
+    }
+
+    QByteArray jwtToken = SessionManager::getInstance()->getAccessToken();
+    if (jwtToken.isEmpty()) {
+        qWarning() << "JWT Token is missing. Cannot fetch sender keys.";
+        emit fetchSenderKeysFailed("Authentication token not found. Please log in again.");
+        return false;
+    }
+
+    if (username.isEmpty()) {
+        emit fetchSenderKeysFailed("Username for sender key request cannot be empty.");
+        return false;
+    }
+
+    // If a request is already running, disconnect its signals and abort it.
+    if (currentReply && currentReply->isRunning()) {
+        qWarning() << "Sender key request already in progress. Disconnecting and aborting previous.";
+        disconnect(currentReply, nullptr, nullptr, nullptr);
+        currentReply->abort();
+        currentReply->deleteLater();
+        currentReply = nullptr;
+    }
+
+    QUrl userKeysUrl(serverUrl + "/users/"); // Same endpoint as in uploadManager
+    QUrlQuery query;
+    query.addQueryItem("username", username);
+    userKeysUrl.setQuery(query);
+
+    QNetworkRequest request(userKeysUrl);
+    request.setRawHeader("Authorization", "Bearer " + jwtToken);
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    request.setSslConfiguration(sslConfig);
+
+    qDebug() << "Fetching sender keys from:" << userKeysUrl.toString();
+    currentRequestType = RetrieveSenderKeys;
+    currentReply = networkManager->get(request);
+
+    connect(currentReply, &QNetworkReply::finished, this, &ReceivedFilesManager::handleSenderKeysResponse);
+    connect(currentReply, &QNetworkReply::sslErrors, this, &ReceivedFilesManager::handleSslErrors);
+    connect(currentReply, SIGNAL(errorOccurred(QNetworkReply::NetworkError)), 
+            this, SLOT(handleNetworkError(QNetworkReply::NetworkError)));
+
+    return true;
+}
+
+// New slot to handle the response for sender key request
+void ReceivedFilesManager::handleSenderKeysResponse()
+{
+    if (!currentReply) {
+        qWarning() << "handleSenderKeysResponse called with no currentReply (or reply already handled).";
+        return;
+    }
+
+    QNetworkReply::NetworkError error = currentReply->error();
+    QByteArray responseData = currentReply->readAll();
+
+    if (error == QNetworkReply::OperationCanceledError) {
+        qDebug() << "Sender key fetch operation was canceled. No action taken.";
+    } else if (error == QNetworkReply::NoError) {
+        qDebug() << "Successfully fetched sender keys. Size:" << responseData.size();
+        qDebug() << "Response:" << responseData.left(500);
+        emit senderKeysReceived(responseData);
+    } else {
+        QString errorMsg = currentReply->errorString();
+        qCritical() << "Failed to fetch sender keys. Error:" << errorMsg;
+        qCritical() << "Server Response (if any):" << responseData;
+        emit fetchSenderKeysFailed(errorMsg + " Server details: " + QString::fromUtf8(responseData));
+    }
+
+    currentReply->deleteLater();
+    currentReply = nullptr;
 } 
