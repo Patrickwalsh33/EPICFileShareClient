@@ -5,19 +5,23 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QEvent>
-#include <QMouseEvent>
+#include <QMouseEvent>  //qt mouse events
 
+//constructor
 RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::RecievedFilesPage)
+    QDialog(parent),  //initialize parent class 
+    ui(new Ui::RecievedFilesPage)    //create ui object
 {
-    ui->setupUi(this);
+    ui->setupUi(this);    //set up ui elements
 
+    //connect buttons to slots
     connect(ui->getFilesButton, &QPushButton::clicked, this, &RecievedFilesPage::on_getFilesButton_clicked);
     connect(ui->decryptButton, &QPushButton::clicked, this, &RecievedFilesPage::on_decryptButton_clicked);
     connect(ui->downloadButton, &QPushButton::clicked, this, &RecievedFilesPage::on_downloadButton_clicked);
     connect(ui->backButton, &QPushButton::clicked, this, &RecievedFilesPage::on_backButton_clicked);
 
+
+//creates layout for scroll area
     if (!ui->scrollAreaWidgetContents->layout()) {
         QVBoxLayout* scrollLayout = new QVBoxLayout(ui->scrollAreaWidgetContents);
         scrollLayout->setSpacing(10);
@@ -25,14 +29,15 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
         ui->scrollAreaWidgetContents->setLayout(scrollLayout);
     }
 
-    updateButtonStates();
+    updateButtonStates(); //initalize button states
 }
-
+//destructor
 RecievedFilesPage::~RecievedFilesPage()
 {
     delete ui;
 }
 
+//creates ui elements for a file entry
 bool RecievedFilesPage::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonPress) {
@@ -49,6 +54,7 @@ bool RecievedFilesPage::eventFilter(QObject *watched, QEvent *event)
     return QDialog::eventFilter(watched, event); // Pass on unhandled events
 }
 
+//handles get files button click
 void RecievedFilesPage::on_getFilesButton_clicked()
 {
     qDebug() << "Get Files button clicked. Implement fetching logic here.";
@@ -95,6 +101,7 @@ void RecievedFilesPage::on_getFilesButton_clicked()
     updateButtonStates();
 }
 
+//creates ui for file entry
 void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
     QFrame* box = new QFrame(ui->scrollAreaWidgetContents);
     box->setObjectName("fileBox_" + fileInfo.uuid);
@@ -134,6 +141,7 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
     }
 }
 
+//handles file box selection
 void RecievedFilesPage::onFileBoxClicked(int index) {
     if (index < 0 || index >= receivedFiles.size()) {
         qDebug() << "Invalid file index clicked:" << index;
@@ -167,6 +175,8 @@ void RecievedFilesPage::onFileBoxClicked(int index) {
     updateButtonStates();
 }
 
+
+//updates enabled state and style of action buttons
 void RecievedFilesPage::updateButtonStates() {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
         ui->decryptButton->setEnabled(false);
@@ -191,6 +201,7 @@ void RecievedFilesPage::updateButtonStates() {
     }
 }
 
+//handles decrypt button click
 void RecievedFilesPage::on_decryptButton_clicked()
 {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size() || receivedFiles[selectedFileIndex].isDecrypted) {
@@ -212,6 +223,8 @@ void RecievedFilesPage::on_decryptButton_clicked()
     QMessageBox::information(this, "Decryption Complete", receivedFiles[selectedFileIndex].fileName + " has been decrypted.");
 }
 
+
+//handles download button click
 void RecievedFilesPage::on_downloadButton_clicked()
 {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size() || !receivedFiles[selectedFileIndex].isDecrypted) {
@@ -228,12 +241,14 @@ void RecievedFilesPage::on_downloadButton_clicked()
     QMessageBox::information(this, "Download Complete", fileToDownload.fileName + " has been 'downloaded' (simulated).");
 }
 
+//handles back button click
 void RecievedFilesPage::on_backButton_clicked()
 {
     reject();
     qDebug() << "Back button clicked, closing RecievedFilesPage.";
 }
 
+// formats file size into human readable string
 QString RecievedFilesPage::formatFileSize(qint64 size) {
     if (size < 1024)
         return QString("%1 bytes").arg(size);
@@ -245,6 +260,7 @@ QString RecievedFilesPage::formatFileSize(qint64 size) {
         return QString("%1 GB").arg(size / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
 }
 
+updates file to display info
 void RecievedFilesPage::updateFileInfoDisplay(int index) {
     Q_UNUSED(index);
 } 
