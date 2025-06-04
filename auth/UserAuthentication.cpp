@@ -595,6 +595,124 @@ void UserAuthentication::handleNetworkError(QNetworkReply::NetworkError error)
     }
 }
 
+QByteArray UserAuthentication::deriveKeyFromPassword(const QString& password) {
+    qDebug() << "Deriving master key from password using Argon2";
+    
+    // Get stored salt from keychain
+    auto saltEncoded = keychain::getPassword(package1, "MasterKeySalt", user1, loadError);
+    if (loadError.type != keychain::ErrorType::NoError) {
+        throw std::runtime_error("Failed to load master key salt from keychain");
+    }
+    qDebug() << "Loaded salt (base64):" << QString::fromStdString(saltEncoded);
+
+    // Convert string back to original salt
+    std::vector<unsigned char> salt = base64Decode(saltEncoded);
+    qDebug() << "Decoded salt (hex):" << QByteArray(reinterpret_cast<const char*>(salt.data()), salt.size()).toHex();
+    
+    // Convert password to byte array
+    QByteArray passwordBytes = password.toUtf8();
+    
+    // Use Argon2 to derive key with MODERATE parameters (same as login)
+    std::vector<unsigned char> derivedKey(crypto_aead_chacha20poly1305_ietf_KEYBYTES);
+    if (crypto_pwhash(derivedKey.data(), derivedKey.size(),
+                     passwordBytes.constData(), passwordBytes.size(),
+                     salt.data(),
+                     crypto_pwhash_OPSLIMIT_MODERATE,
+                     crypto_pwhash_MEMLIMIT_MODERATE,
+                     crypto_pwhash_ALG_DEFAULT) != 0) {
+        throw std::runtime_error("Failed to derive key from password - out of memory");
+    }
+
+    qDebug() << "Derived master key (hex):" << QByteArray(reinterpret_cast<const char*>(derivedKey.data()), derivedKey.size()).toHex();
+    
+    return QByteArray(reinterpret_cast<const char*>(derivedKey.data()), derivedKey.size());
+}
+
+QByteArray UserAuthentication::deriveNewKeyFromPassword(const QString& password) {
+    qDebug() << "Deriving new master key from password using Argon2";
+    
+    // Generate new salt
+    std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES);
+    randombytes_buf(salt.data(), salt.size());
+    
+    // Store new salt in keychain
+    std::string saltEncoded = base64Encode(salt);
+    keychain::setPassword(package1, "MasterKeySalt", user1, saltEncoded, keychainError);
+    if (keychainError.type != keychain::ErrorType::NoError) {
+        throw std::runtime_error("Failed to store new master key salt");
+    }
+    qDebug() << "New salt stored (base64):" << QString::fromStdString(saltEncoded);
+    
+    // Convert password to byte array
+    QByteArray passwordBytes = password.toUtf8();
+    
+    // Use Argon2 to derive key with MODERATE parameters (same as login)
+    std::vector<unsigned char> derivedKey(crypto_aead_chacha20poly1305_ietf_KEYBYTES);
+    if (crypto_pwhash(derivedKey.data(), derivedKey.size(),
+                     passwordBytes.constData(), passwordBytes.size(),
+                     salt.data(),
+                     crypto_pwhash_OPSLIMIT_MODERATE,
+                     crypto_pwhash_MEMLIMIT_MODERATE,
+                     crypto_pwhash_ALG_DEFAULT) != 0) {
+        throw std::runtime_error("Failed to derive key from password - out of memory");
+    }
+
+    qDebug() << "New master key (hex):" << QByteArray(reinterpret_cast<const char*>(derivedKey.data()), derivedKey.size()).toHex();
+    
+    return QByteArray(reinterpret_cast<const char*>(derivedKey.data()), derivedKey.size());
+}
+
+QByteArray UserAuthentication::decryptKEK(const QByteArray& masterKey) {
+    qDebug() << "Decrypting KEK with master key";
+    
+    // Get encrypted KEK from keychain
+    KEKManager kekManager(package1, user1);  // Use the static constants
+    std::vector<unsigned char> masterKeyVec(reinterpret_cast<const unsigned char*>(masterKey.constData()),
+                                          reinterpret_cast<const unsigned char*>(masterKey.constData()) + masterKey.size());
+    
+    try {
+        KeyEncryptor::EncryptedData encryptedKEK = kekManager.keyEncryptor_.loadEncryptedKey("Enkek", loadError);
+        return QByteArray(reinterpret_cast<const char*>(kekManager.decryptKEK(masterKeyVec, encryptedKEK.ciphertext, encryptedKEK.nonce).data()),
+                         kekManager.decryptKEK(masterKeyVec, encryptedKEK.ciphertext, encryptedKEK.nonce).size());
+    } catch (const std::exception& e) {
+        qDebug() << "Failed to decrypt KEK:" << e.what();
+        throw;
+    }
+}
+
+bool UserAuthentication::updateKEKEncryption(const QByteArray& decryptedKEK, const QByteArray& newMasterKey) {
+    qDebug() << "Re-encrypting KEK with new master key";
+    
+    try {
+        KEKManager kekManager(package1, user1);  // Use the static constants
+        std::vector<unsigned char> kekVec(reinterpret_cast<const unsigned char*>(decryptedKEK.constData()),
+                                        reinterpret_cast<const unsigned char*>(decryptedKEK.constData()) + decryptedKEK.size());
+        std::vector<unsigned char> newKeyVec(reinterpret_cast<const unsigned char*>(newMasterKey.constData()),
+                                           reinterpret_cast<const unsigned char*>(newMasterKey.constData()) + newMasterKey.size());
+        
+        // Generate new nonce
+        std::vector<unsigned char> nonce(crypto_aead_chacha20poly1305_NPUBBYTES);
+        randombytes_buf(nonce.data(), nonce.size());
+        
+        // Encrypt and store the KEK
+        kekManager.encryptKEK(newKeyVec, kekVec, nonce);
+        return true; // If we get here, encryption succeeded
+    } catch (const std::exception& e) {
+        qDebug() << "Failed to update KEK encryption:" << e.what();
+        return false;
+    }
+}
+
+bool UserAuthentication::verifyMasterKey(const QByteArray& masterKey) {
+    try {
+        // Try to decrypt KEK with the master key
+        QByteArray decryptedKEK = decryptKEK(masterKey);
+        return !decryptedKEK.isEmpty();
+    } catch (const std::exception& e) {
+        qDebug() << "Master key verification failed:" << e.what();
+        return false;
+    }
+}
 
 UserAuthentication::~UserAuthentication()
 {

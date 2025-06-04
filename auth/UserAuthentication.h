@@ -14,8 +14,9 @@
 #include <QNetworkRequest>
 #include <QSslError>
 #include "RateLimiter.h"
-
-
+#include "CommonPasswordChecker.h"
+#include <QDebug>
+#include <sodium.h>
 
 class UserAuthentication : public QObject {
     Q_OBJECT
@@ -38,6 +39,12 @@ public:
     QString getAccessToken() const;
     QByteArray getDecryptedKekTemp() const;
 
+    // New methods for password change functionality
+    QByteArray deriveKeyFromPassword(const QString& password);
+    QByteArray deriveNewKeyFromPassword(const QString& password);
+    QByteArray decryptKEK(const QByteArray& masterKey);
+    bool updateKEKEncryption(const QByteArray& decryptedKEK, const QByteArray& newMasterKey);
+    bool verifyMasterKey(const QByteArray& masterKey);
 
 signals:
     void challengeFailed(const QString &error);
