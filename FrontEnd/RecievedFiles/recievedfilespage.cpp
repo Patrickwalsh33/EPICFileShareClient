@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QEvent>
+#include <QFileDialog>
 
 #include <QMouseEvent>  //qt mouse events
 
@@ -141,7 +142,7 @@ void RecievedFilesPage::on_getFilesButton_clicked()
 void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
     QFrame* box = new QFrame(ui->scrollAreaWidgetContents);
     box->setObjectName("fileBox_" + fileInfo.uuid);
-    box->setMinimumHeight(90);
+    box->setMinimumHeight(110); // Increased height for new label
     box->setStyleSheet("QFrame { background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; }");
     box->setCursor(Qt::PointingHandCursor);
     box->installEventFilter(this);
@@ -155,13 +156,16 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
 
     fileInfo.senderLabel = new QLabel("From: " + fileInfo.sender, box);
     fileInfo.senderLabel->setStyleSheet("font-size: 12px; color: #333;");
-    
+
+    fileInfo.typeLabel = new QLabel("Type: Unknown", box); // Initialize type label
+    fileInfo.typeLabel->setStyleSheet("font-size: 12px; color: #555;");
 
     fileInfo.statusLabel = new QLabel(fileInfo.isDecrypted ? "Status: Decrypted" : "Status: Encrypted", box);
     fileInfo.statusLabel->setStyleSheet(fileInfo.isDecrypted ? "color: #28a745;" : "color: #dc3545;");
 
     boxLayout->addWidget(fileInfo.nameLabel);
     boxLayout->addWidget(fileInfo.senderLabel);
+    boxLayout->addWidget(fileInfo.typeLabel); // Add type label to layout
     boxLayout->addWidget(fileInfo.statusLabel);
 
     fileInfo.displayBox = box;
@@ -211,19 +215,44 @@ void RecievedFilesPage::updateButtonStates() {
         ui->downloadButton->setEnabled(false);
         ui->decryptButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
         ui->downloadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
+        ui->downloadButton->setText("Download File");
         return;
     }
+
     const auto& selectedFile = receivedFiles[selectedFileIndex];
-    if (!selectedFile.isDecrypted) {
+
+    // Decrypt Button (for X3DH/Metadata)
+    if (!selectedFile.isDecrypted) { // Not yet processed for X3DH/metadata
         ui->decryptButton->setEnabled(true);
-        ui->downloadButton->setEnabled(false);
         ui->decryptButton->setStyleSheet("color: white; background-color: #2196F3; border: none; border-radius: 15px; font-size: 22px;");
-        ui->downloadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
-    } else { 
+    } else { // Already X3DH/metadata processed
         ui->decryptButton->setEnabled(false);
-        ui->downloadButton->setEnabled(true);
         ui->decryptButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
+    }
+
+    // Download/Save Button
+    if (selectedFile.isSavedToDisk) {
+        ui->downloadButton->setEnabled(false);
+        ui->downloadButton->setText("File Saved");
+        ui->downloadButton->setStyleSheet("color: #666666; background-color: #d0d0d0; border: none; border-radius: 15px; font-size: 22px;"); // Slightly different disabled style
+    } else if (selectedFile.isDecrypted && !selectedFile.decryptedData.isEmpty()) { // Metadata processed AND file data decrypted
+        ui->downloadButton->setEnabled(true);
+        ui->downloadButton->setText("Save File");
         ui->downloadButton->setStyleSheet("color: white; background-color: #4CAF50; border: none; border-radius: 15px; font-size: 22px;");
+    } else if (selectedFile.isDecrypted && selectedFile.actualFileUuid_.isEmpty()) { // Metadata processed but UUID missing (error state)
+        ui->downloadButton->setEnabled(false);
+        ui->downloadButton->setText("Download Error");
+        ui->downloadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
+    } else if (selectedFile.isDecrypted) { // Metadata processed, file ready for encrypted download (or download failed/in progress)
+        ui->downloadButton->setEnabled(true); // Allow clicking to initiate download if not yet downloaded
+        ui->downloadButton->setText("Download Encrypted");
+        // Style differently if it's actively downloading vs. ready to download
+        // This part might need refinement based on m_receivedFilesManager state for the current file
+        ui->downloadButton->setStyleSheet("color: white; background-color: #FF9800; border: none; border-radius: 15px; font-size: 22px;"); // Orange for "Download Encrypted"
+    } else { // Not yet X3DH/metadata processed, so download is not an option yet
+        ui->downloadButton->setEnabled(false);
+        ui->downloadButton->setText("Download File");
+        ui->downloadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
     }
 }
 
@@ -264,8 +293,8 @@ void RecievedFilesPage::on_downloadButton_clicked()
     ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
 
     if (!selectedFile.isDecrypted) {
-        qDebug() << "Download button: File is not yet decrypted (X3DH key not derived or metadata not processed).";
-        QMessageBox::warning(this, "Not Ready", "Please ensure the file is decrypted first (X3DH key derived and metadata processed).");
+        qDebug() << "Download button: File is not yet X3DH processed.";
+        QMessageBox::warning(this, "Not Ready", "Please ensure the file is processed (X3DH key derived and metadata decrypted). Download of encrypted content will occur first if needed.");
         return;
     }
 
@@ -288,6 +317,64 @@ void RecievedFilesPage::on_downloadButton_clicked()
     ui->downloadButton->setText("Downloading...");
 
     m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
+    if (selectedFile.decryptedData.isEmpty()) {
+        // This case implies encrypted data has been downloaded but not yet decrypted by DEK, or decryption failed.
+        // Or, if encrypted data hasn't even been downloaded yet.
+        if (!selectedFile.isDownloaded) {
+            qDebug() << "Download button: Encrypted content not yet downloaded. Initiating download first.";
+            if (selectedFile.actualFileUuid_.isEmpty()) {
+                qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
+                QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
+                return;
+            }
+            qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
+            ui->downloadButton->setEnabled(false);
+            ui->downloadButton->setText("Downloading Encrypted...");
+            m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
+        } else {
+             qDebug() << "Download button: File data not decrypted yet or decryption failed. Cannot save.";
+             QMessageBox::warning(this, "Not Ready to Save", "File content has been downloaded but is not yet successfully decrypted. Please check status.");
+        }
+        return;
+    }
+
+    // At this point, selectedFile.decryptedData is populated and ready to be saved.
+    if (selectedFile.isSavedToDisk) {
+        QMessageBox::information(this, "Already Saved", selectedFile.fileName + " has already been saved to disk.");
+        return;
+    }
+
+    QString suggestedFileName = selectedFile.fileName; // Use the actual filename from metadata
+    QString saveFilePath = QFileDialog::getSaveFileName(this,
+                                                        tr("Save File As"),
+                                                        QDir::homePath() + "/" + suggestedFileName,
+                                                        tr("All Files (*.*)"));
+
+    if (saveFilePath.isEmpty()) {
+        qDebug() << "Save operation cancelled by user.";
+        return;
+    }
+
+    QFile file(saveFilePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qDebug() << "Failed to open file for writing:" << saveFilePath << "Error:" << file.errorString();
+        QMessageBox::critical(this, "Save Error", "Could not save file to the selected location: " + file.errorString());
+        return;
+    }
+
+    if (file.write(selectedFile.decryptedData) == -1) {
+        qDebug() << "Failed to write decrypted data to file:" << saveFilePath << "Error:" << file.errorString();
+        QMessageBox::critical(this, "Save Error", "Failed to write data to file: " + file.errorString());
+        file.close();
+        return;
+    }
+
+    file.close();
+    qDebug() << "File" << selectedFile.fileName << "saved successfully to" << saveFilePath;
+    QMessageBox::information(this, "File Saved", selectedFile.fileName + " has been saved successfully.");
+
+    selectedFile.isSavedToDisk = true; // Mark as saved
+    updateButtonStates(); // Update button state
 }
 
 //handles back button click
@@ -450,8 +537,8 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         }
         std::vector<unsigned char> kekVector = toStdVector(kek_qba);
 
-        std::string userPackage = "leftovers.project"; 
-        std::string userId = "tempUser"; 
+        std::string userPackage = "leftovers.project";
+        std::string userId = "tempUser";
         KEKManager kekManager(userPackage, userId);
         QByteArray receiverIdentityKey;
         QByteArray receiverSignedPrekey; // May not be strictly needed by X3DH receiver side if OPK is used
@@ -510,13 +597,23 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         QJsonDocument doc = QJsonDocument::fromJson(selectedFile.decryptedMetadataJsonString.toUtf8());
         if (!doc.isNull() && doc.isObject()) {
             QJsonObject jsonObj = doc.object();
-            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName); // Use original if not in metadata
-            selectedFile.fileName = actualFilename; // Update stored filename
+            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName);
+            selectedFile.fileName = actualFilename;
             if (selectedFile.nameLabel) selectedFile.nameLabel->setText("File: " + actualFilename);
-            
-            // Store the actual file UUID from metadata
+
             selectedFile.actualFileUuid_ = jsonObj.value("uuid").toString();
             qDebug() << "Stored actual file UUID from metadata:" << selectedFile.actualFileUuid_;
+
+            // Extract DEK, fileNonce, and mimeType
+            selectedFile.dek = QByteArray::fromBase64(jsonObj.value("dek").toString().toUtf8());
+            selectedFile.fileNonce = QByteArray::fromBase64(jsonObj.value("file_nonce").toString().toUtf8());
+            selectedFile.mimeType = jsonObj.value("mime").toString("application/octet-stream"); // Default MIME type
+
+            if (selectedFile.typeLabel) selectedFile.typeLabel->setText("Type: " + selectedFile.mimeType);
+
+            qDebug() << "Parsed DEK, File Nonce, and MIME type from metadata.";
+            if (selectedFile.dek.isEmpty()) qDebug() << "Warning: DEK is empty after parsing from metadata.";
+            if (selectedFile.fileNonce.isEmpty()) qDebug() << "Warning: File Nonce is empty after parsing from metadata.";
 
         } else {
             qDebug() << "Failed to parse decrypted metadata as JSON.";
@@ -584,18 +681,52 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
     targetFile.isDownloaded = true; // Mark as downloaded
 
     qDebug() << "Stored encrypted data for" << targetFile.fileName << "Size:" << targetFile.encryptedData.size();
-    QMessageBox::information(this, "Download Complete", 
-                             "Encrypted content for " + targetFile.fileName + " downloaded successfully.\nReady for DEK decryption (not yet implemented)." );
+
+    // Attempt to decrypt the file data immediately after download
+    if (!targetFile.dek.isEmpty() && !targetFile.fileNonce.isEmpty()) {
+        DecryptionManager decryptionManager; // Create an instance or use a member instance
+        targetFile.decryptedData = decryptionManager.decryptFileData(
+            targetFile.encryptedData,
+            targetFile.dek,
+            targetFile.fileNonce
+        );
+
+        if (!targetFile.decryptedData.isEmpty()) {
+            qDebug() << "Successfully decrypted file data for:" << targetFile.fileName << "Decrypted size:" << targetFile.decryptedData.size();
+            QMessageBox::information(this, "Decryption Successful",
+                                     targetFile.fileName + " has been successfully decrypted and is ready to be saved.");
+            if (targetFile.statusLabel) {
+                targetFile.statusLabel->setText("Status: Decrypted (Ready to Save)");
+            }
+            if (targetFile.displayBox && selectedFileIndex == fileIdx) {
+                targetFile.displayBox->setStyleSheet("QFrame { background-color: #bbdefb; border: 2px solid #007bff; border-radius: 4px; }"); // Light blue for fully decrypted & ready to save
+            }
+        } else {
+            qDebug() << "Failed to decrypt file data for:" << targetFile.fileName;
+            QMessageBox::warning(this, "Decryption Failed",
+                                 "Could not decrypt the content of " + targetFile.fileName + ". The file might be corrupted or the key/nonce is incorrect.");
+            if (targetFile.statusLabel) {
+                targetFile.statusLabel->setText("Status: Downloaded (Decryption Failed)");
+            }
+        }
+    } else {
+        qWarning() << "Cannot decrypt file data: DEK or file nonce is missing for" << targetFile.fileName;
+        QMessageBox::information(this, "Download Complete",
+                                 "Encrypted content for " + targetFile.fileName + " downloaded. Metadata for decryption seems incomplete.");
+        if (targetFile.statusLabel) {
+            targetFile.statusLabel->setText("Status: Downloaded (Encrypted - Meta Missing)");
+        }
+    }
 
     // Update UI for the specific file if needed (e.g., status label)
-    if (targetFile.statusLabel) {
-        targetFile.statusLabel->setText("Status: Downloaded (Encrypted)");
-    }
-    if (targetFile.displayBox && selectedFileIndex == fileIdx) { // If it's the currently selected box
-         targetFile.displayBox->setStyleSheet("QFrame { background-color: #cce5ff; border: 2px solid #007bff; border-radius: 4px; }"); // Blue-ish highlight for downloaded
-    }
+    // if (targetFile.statusLabel) { //This is now handled above based on decryption result
+    //    targetFile.statusLabel->setText("Status: Downloaded (Encrypted)");
+    // }
+    // if (targetFile.displayBox && selectedFileIndex == fileIdx) { // This is now handled above
+    //     targetFile.displayBox->setStyleSheet("QFrame { background-color: #cce5ff; border: 2px solid #007bff; border-radius: 4px; }"); // Blue-ish highlight for downloaded
+    // }
 
-    updateButtonStates(); // This will reflect the new isDownloaded state for the download button
+    updateButtonStates(); // This will reflect the new isDownloaded state and potentially decryptedData state
 }
 
 // New slot to handle file download errors
@@ -612,4 +743,4 @@ void RecievedFilesPage::handleFileDownloadError(const QString &error, const QStr
     }
     ui->downloadButton->setText("Download File");
     updateButtonStates();
-} 
+}
