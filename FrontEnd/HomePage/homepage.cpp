@@ -4,47 +4,47 @@
 #include "../UploadPage/uploadpage.h"
 #include "../SentFiles/sentfilespage.h"
 #include "../RecievedFiles/recievedfilespage.h"
-#include <QDebug>
+#include <QDebug> //Qt debugng utility
 
+//Constructor Implementaion
+//uses initaliztion list. lets you set inital values of class data member
 HomePage::HomePage(const QString &username, QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::HomePage),
-    currentUsername(username)
+    QDialog(parent),    //initalizes parent class
+    ui(new Ui::HomePage),   //creates ui instance
+    currentUsername(username)   //initalizes username member
 {
     ui->setupUi(this);
     ui->welcomeLabel->setText("Welcome to the Leftovers Home Page");
 }
 
-HomePage::~HomePage()
-{
+//destructor
+HomePage::~HomePage() {
     delete ui;
 }
 
-void HomePage::on_profileButton_clicked()
-{
-    qDebug() << "Profile button clicked on HomePage for user:" << currentUsername;
-    ProfilePage *profilePage = new ProfilePage(currentUsername, this);
-    profilePage->setAttribute(Qt::WA_DeleteOnClose);
-    profilePage->exec();
+//slot for profile button. basically qt better version of event handler
+void HomePage::on_profileButton_clicked() {
+    ProfilePage *profilePage = new ProfilePage(currentUsername, this); //creates new profilePage dialog
+    profilePage->setAttribute(Qt::WA_DeleteOnClose); //auto deletes on close
+    profilePage->exec();  
 }
 
-void HomePage::on_uploadButton_clicked()
-{
-    qDebug() << "Upload button clicked on HomePage for user:" << currentUsername;
-    UploadPage *uploadPage = new UploadPage(this);
+//slot for upload button
+void HomePage::on_uploadButton_clicked() {
+    UploadPage *uploadPage = new UploadPage(this); 
     uploadPage->setAttribute(Qt::WA_DeleteOnClose);
     uploadPage->exec();
 }
 
-void HomePage::on_filesSentButton_clicked()
-{
+//slot for sent files button
+void HomePage::on_filesSentButton_clicked() {
     SentFilesPage *sentFilesPage = new SentFilesPage(this);
     sentFilesPage->setAttribute(Qt::WA_DeleteOnClose);
     sentFilesPage->exec();
 }
 
-void HomePage::on_filesReceivedButton_clicked()
-{
+//slot for received files button
+void HomePage::on_filesReceivedButton_clicked() {
     RecievedFilesPage *recievedFilesPage = new RecievedFilesPage(this);
     recievedFilesPage->setAttribute(Qt::WA_DeleteOnClose);
     recievedFilesPage->exec();
