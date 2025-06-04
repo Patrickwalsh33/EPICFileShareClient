@@ -60,6 +60,11 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
             this, &RecievedFilesPage::handleSenderKeysResponse);
     connect(m_receivedFilesManager, &ReceivedFilesManager::fetchSenderKeysFailed,
             this, &RecievedFilesPage::handleFetchSenderKeysError);
+    // Setup for ReceivedFilesManager - File Download
+    connect(m_receivedFilesManager, &ReceivedFilesManager::fileDownloadSucceeded,
+            this, &RecievedFilesPage::handleFileDownloadSuccess);
+    connect(m_receivedFilesManager, &ReceivedFilesManager::fileDownloadFailed,
+            this, &RecievedFilesPage::handleFileDownloadError);
     // connect(m_receivedFilesManager, &ReceivedFilesManager::sslErrorsSignal, this, &SomeOtherSlotForSslErrors); // Optional: if you want to handle general SSL errors separately
 
     connect(ui->getFilesButton, &QPushButton::clicked, this, &RecievedFilesPage::on_getFilesButton_clicked);
@@ -252,15 +257,37 @@ void RecievedFilesPage::on_decryptButton_clicked()
 //handles download button click
 void RecievedFilesPage::on_downloadButton_clicked()
 {
-    if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size() || !receivedFiles[selectedFileIndex].isDecrypted) {
-         qDebug() << "Download button clicked, but no valid decrypted file selected.";
+    if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
+         qDebug() << "Download button: No file selected.";
         return;
     }
-    const auto& fileToDownload = receivedFiles[selectedFileIndex];
-    qDebug() << "Downloading file:" << fileToDownload.fileName;
-    QMessageBox::information(this, "Download Started", "Downloading " + fileToDownload.fileName + "...");
-    updateButtonStates();
-    QMessageBox::information(this, "Download Complete", fileToDownload.fileName + " has been 'downloaded' (simulated).");
+    ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
+
+    if (!selectedFile.isDecrypted) {
+        qDebug() << "Download button: File is not yet decrypted (X3DH key not derived or metadata not processed).";
+        QMessageBox::warning(this, "Not Ready", "Please ensure the file is decrypted first (X3DH key derived and metadata processed).");
+        return;
+    }
+
+    if (selectedFile.actualFileUuid_.isEmpty()) {
+        qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
+        QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
+        return;
+    }
+    
+    if (selectedFile.isDownloaded) { // Optional: check if already downloaded
+        qDebug() << "File" << selectedFile.actualFileUuid_ << "already downloaded.";
+        QMessageBox::information(this, "Already Downloaded", "This file's encrypted content has already been downloaded.");
+        // You might offer to re-download or proceed to decrypt with DEK if that's the next step
+        return;
+    }
+
+    qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
+    
+    ui->downloadButton->setEnabled(false);
+    ui->downloadButton->setText("Downloading...");
+
+    m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
 }
 
 //handles back button click
@@ -505,8 +532,13 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         if (!doc.isNull() && doc.isObject()) {
             QJsonObject jsonObj = doc.object();
             QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName); // Use original if not in metadata
+            selectedFile.fileName = actualFilename; // Update stored filename
             if (selectedFile.nameLabel) selectedFile.nameLabel->setText("File: " + actualFilename);
-            // Potentially update selectedFile.fileName itself if needed elsewhere
+            
+            // Store the actual file UUID from metadata
+            selectedFile.actualFileUuid_ = jsonObj.value("uuid").toString();
+            qDebug() << "Stored actual file UUID from metadata:" << selectedFile.actualFileUuid_;
+
         } else {
             qDebug() << "Failed to parse decrypted metadata as JSON.";
         }
@@ -535,10 +567,70 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
 void RecievedFilesPage::handleFetchSenderKeysError(const QString &error)
 {
     qDebug() << "Error fetching sender keys:" << error;
-    if (selectedFileIndex >= 0 && selectedFileIndex < receivedFiles.size()) {
-        // Only re-enable if a file is still logically selected
+    // Only re-enable if a file is still logically selected and not yet successfully processed
+    if (selectedFileIndex >= 0 && selectedFileIndex < receivedFiles.size() && !receivedFiles[selectedFileIndex].isDecrypted) {
         ui->decryptButton->setEnabled(true); 
     }
     ui->decryptButton->setText("Decrypt File");
     QMessageBox::critical(this, "Error Fetching Sender Keys", error);
+}
+
+// New slot to handle successful file download
+void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFileBytes, const QString &file_uuid_ref)
+{
+    qDebug() << "Successfully downloaded encrypted file content for UUID_ref:" << file_uuid_ref;
+    ui->downloadButton->setText("Download File"); // Reset button text
+
+    // Find the corresponding file in our list
+    int fileIdx = -1;
+    for (int i = 0; i < receivedFiles.size(); ++i) {
+        if (receivedFiles[i].actualFileUuid_ == file_uuid_ref) {
+            fileIdx = i;
+            break;
+        }
+    }
+
+    if (fileIdx == -1) {
+        qWarning() << "Could not find file with UUID" << file_uuid_ref << "in the list after download.";
+        // Re-enable button if it was the selected one, though this state is unusual
+        if (selectedFileIndex >=0 && selectedFileIndex < receivedFiles.size() && receivedFiles[selectedFileIndex].actualFileUuid_ == file_uuid_ref) {
+            ui->downloadButton->setEnabled(true);
+        }
+        QMessageBox::critical(this, "Download Error", "Internal error: Downloaded file context lost.");
+        return;
+    }
+
+    ReceivedFileInfo& targetFile = receivedFiles[fileIdx];
+    targetFile.encryptedData = encryptedFileBytes;
+    targetFile.isDownloaded = true; // Mark as downloaded
+
+    qDebug() << "Stored encrypted data for" << targetFile.fileName << "Size:" << targetFile.encryptedData.size();
+    QMessageBox::information(this, "Download Complete", 
+                             "Encrypted content for " + targetFile.fileName + " downloaded successfully.\nReady for DEK decryption (not yet implemented)." );
+
+    // Update UI for the specific file if needed (e.g., status label)
+    if (targetFile.statusLabel) {
+        targetFile.statusLabel->setText("Status: Downloaded (Encrypted)");
+    }
+    if (targetFile.displayBox && selectedFileIndex == fileIdx) { // If it's the currently selected box
+         targetFile.displayBox->setStyleSheet("QFrame { background-color: #cce5ff; border: 2px solid #007bff; border-radius: 4px; }"); // Blue-ish highlight for downloaded
+    }
+
+    updateButtonStates(); // This will reflect the new isDownloaded state for the download button
+}
+
+// New slot to handle file download errors
+void RecievedFilesPage::handleFileDownloadError(const QString &error, const QString &file_uuid_ref)
+{
+    qDebug() << "Error downloading file for UUID_ref:" << file_uuid_ref << ":" << error;
+    QMessageBox::critical(this, "Download Failed", "Failed to download file (" + file_uuid_ref + "): " + error);
+    
+    // Re-enable download button if it was the selected one that failed
+    if (selectedFileIndex >= 0 && selectedFileIndex < receivedFiles.size()) {
+        if (receivedFiles[selectedFileIndex].actualFileUuid_ == file_uuid_ref) {
+            ui->downloadButton->setEnabled(true); 
+        }
+    }
+    ui->downloadButton->setText("Download File");
+    updateButtonStates();
 }
