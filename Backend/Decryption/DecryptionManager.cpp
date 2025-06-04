@@ -118,4 +118,41 @@ QString DecryptionManager::decryptFileMetadata(
 
     std::cout << "[DecryptionManager] File metadata decrypted successfully. Length: " << decryptedMessageLen << std::endl;
     return QString::fromUtf8(reinterpret_cast<const char*>(decryptedMessageBuffer.data()), decryptedMessageBuffer.size());
+}
+
+QByteArray DecryptionManager::decryptFileData(
+    const QByteArray& encryptedData,
+    const QByteArray& dek,
+    const QByteArray& fileNonce)
+{
+    if (dek.size() != crypto_aead_chacha20poly1305_ietf_KEYBYTES) {
+        qCritical() << "[DecryptionManager] Invalid DEK size for file data decryption.";
+        return QByteArray();
+    }
+    if (fileNonce.size() != crypto_aead_chacha20poly1305_ietf_NPUBBYTES) {
+        qCritical() << "[DecryptionManager] Invalid nonce size for file data decryption.";
+        return QByteArray();
+    }
+    if (encryptedData.isEmpty()) {
+        qCritical() << "[DecryptionManager] Encrypted file data is empty.";
+        return QByteArray(); // Or handle as appropriate
+    }
+
+    std::vector<unsigned char> decrypted_data_vec(encryptedData.size() - crypto_aead_chacha20poly1305_ietf_ABYTES);
+    unsigned long long decrypted_len;
+
+    if (crypto_aead_chacha20poly1305_ietf_decrypt(
+            decrypted_data_vec.data(), &decrypted_len,
+            nullptr, // No ciphertext pointer for separate MAC
+            reinterpret_cast<const unsigned char*>(encryptedData.constData()), encryptedData.size(),
+            nullptr, 0, // No AAD
+            reinterpret_cast<const unsigned char*>(fileNonce.constData()),
+            reinterpret_cast<const unsigned char*>(dek.constData())
+        ) != 0) {
+        qWarning() << "[DecryptionManager] File data decryption failed (e.g., MAC mismatch).";
+        return QByteArray(); // Decryption failed
+    }
+
+    decrypted_data_vec.resize(decrypted_len);
+    return QByteArray(reinterpret_cast<const char*>(decrypted_data_vec.data()), decrypted_len);
 } 

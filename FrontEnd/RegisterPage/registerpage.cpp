@@ -8,9 +8,10 @@
 
 
 
-
+//static constants for package and user identifcation
 static const std::string package1 = "leftovers.project";
 static const std::string user1 = "tempUser";
+
 // Constructor
 RegisterPage::RegisterPage(QWidget *parent) :
     QDialog(parent),  //calls the parent constructor
@@ -62,6 +63,7 @@ void RegisterPage::on_registerButton_clicked()
     ui->errorLabel->setVisible(false);
 }
 
+//slot for handling successful server registration
 void RegisterPage::onServerRegistrationSucceeded()
 {
     qDebug() << "Server registration succeeded";
@@ -81,6 +83,7 @@ void RegisterPage::onServerRegistrationSucceeded()
     loginDialog->exec();
 }
 
+//slot for handing failed server registration
 void RegisterPage::onServerRegistrationFailed(const QString &error)
 {
     qDebug() << "Server registration failed:" << error;

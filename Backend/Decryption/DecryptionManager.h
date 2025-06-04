@@ -41,6 +41,13 @@ public:
         const QByteArray& decryptionKey
     );
 
+    // New method for decrypting file data
+    QByteArray decryptFileData(
+        const QByteArray& encryptedData,
+        const QByteArray& dek, // Data Encryption Key
+        const QByteArray& fileNonce
+    );
+
 private:
     // If derive_key_from_shared_secret is not a free function and belongs to a class,
     // an instance of that class might be needed here, or it might be static.
