@@ -260,7 +260,7 @@ QString RecievedFilesPage::formatFileSize(qint64 size) {
         return QString("%1 GB").arg(size / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
 }
 
-updates file to display info
+// Updates file display info
 void RecievedFilesPage::updateFileInfoDisplay(int index) {
     Q_UNUSED(index);
 } 
