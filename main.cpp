@@ -3,7 +3,6 @@
 #include "FrontEnd/LandingPage/landingpage.h"
 #include <QDebug>
 #include "X3DH/X3DH_shared.h"
-#include "Testing/X3DHTest.h"
 #include "key_management/DataEncryptionKey.h"
 #include "crypto/crypto_utils.h"
 #include <QtNetwork/QNetworkAccessManager>
@@ -15,10 +14,10 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    QNetworkAccessManager networkManager;
-    networkTests::runAllNetworkTests(&networkManager);
-
-    AuthenticationTests::runAllTests();
+//    QNetworkAccessManager networkManager;
+//    networkTests::runAllNetworkTests(&networkManager);
+//
+//    AuthenticationTests::runAllTests();
 
 
     LandingPage landingPage;

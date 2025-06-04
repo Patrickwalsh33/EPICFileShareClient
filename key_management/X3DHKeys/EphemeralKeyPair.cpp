@@ -1,6 +1,7 @@
 #include "EphemeralKeyPair.h"
 #include <sodium.h>
 
+//each key is 32 bytes long
 EphemeralKeyPair::EphemeralKeyPair()
         : publicKey(crypto_box_PUBLICKEYBYTES), privateKey(crypto_box_SECRETKEYBYTES)
 {

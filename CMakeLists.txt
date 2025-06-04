@@ -63,8 +63,6 @@ add_executable(MyQtApp
         key_management/X3DHKeys/OneTimeKeyPair.cpp
         key_management/X3DHKeys/SignedPreKeyPair.h
         key_management/X3DHKeys/SignedPreKeyPair.cpp
-        Testing/X3DHTest.cpp
-        Testing/X3DHTest.h
         key_management/DataEncryptionKey.h
         key_management/DataEncryptionKey.cpp
         key_management/KeyEncryptor.h

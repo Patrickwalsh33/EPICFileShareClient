@@ -134,7 +134,7 @@ void ReceivedFilesManager::handleNetworkError(QNetworkReply::NetworkError errorC
 
 }
 
-// New method to request sender's public keys (pre-key bundle)
+// request sender's public keys (pre-key bundle)
 bool ReceivedFilesManager::requestSenderKeys(const QString &username)
 {
     qDebug() << "Requesting sender keys for user:" << username;
@@ -166,7 +166,7 @@ bool ReceivedFilesManager::requestSenderKeys(const QString &username)
         currentReply = nullptr;
     }
 
-    QUrl userKeysUrl(serverUrl + "/users/"); // Same endpoint as in uploadManager
+    QUrl userKeysUrl(serverUrl + "/users/");
     QUrlQuery query;
     query.addQueryItem("username", username);
     userKeysUrl.setQuery(query);
@@ -188,7 +188,6 @@ bool ReceivedFilesManager::requestSenderKeys(const QString &username)
     return true;
 }
 
-// New slot to handle the response for sender key request
 void ReceivedFilesManager::handleSenderKeysResponse()
 {
     if (!currentReply) {
@@ -216,7 +215,7 @@ void ReceivedFilesManager::handleSenderKeysResponse()
     currentReply = nullptr;
 }
 
-// New method to download encrypted file content
+
 bool ReceivedFilesManager::downloadEncryptedFile(const QString &file_uuid)
 {
     qDebug() << "Requesting download for file UUID:" << file_uuid;
@@ -267,7 +266,7 @@ bool ReceivedFilesManager::downloadEncryptedFile(const QString &file_uuid)
     return true;
 }
 
-// New slot to handle the response for file download request
+
 void ReceivedFilesManager::handleFileDownloadResponse()
 {
     if (!currentReply) {
@@ -280,7 +279,7 @@ void ReceivedFilesManager::handleFileDownloadResponse()
     }
 
     QNetworkReply::NetworkError error = currentReply->error();
-    QByteArray responseData = currentReply->readAll(); // This will be the raw encrypted file bytes
+    QByteArray responseData = currentReply->readAll(); // raw encrypted file bytes
     QString associated_uuid = this->m_currentDownloadFileUuid_temp; // Get the UUID for this request
     this->m_currentDownloadFileUuid_temp.clear(); // Clear for next request
 

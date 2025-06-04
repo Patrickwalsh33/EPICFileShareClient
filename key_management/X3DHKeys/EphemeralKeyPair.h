@@ -6,6 +6,7 @@ class EphemeralKeyPair {
 public:
     EphemeralKeyPair();
 
+    //no discard throws a warning if we forget to use the return value
     [[nodiscard]] const std::vector<unsigned char>& getPublicKey() const;
     [[nodiscard]] const std::vector<unsigned char>& getPrivateKey() const;
 

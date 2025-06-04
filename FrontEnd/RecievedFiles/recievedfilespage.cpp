@@ -8,26 +8,25 @@
 #include <QEvent>
 #include <QFileDialog>
 
-#include <QMouseEvent>  //qt mouse events
-
 #include <QMouseEvent>
+
 #include <sodium.h>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 
-// Key Management Includes
+
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
 #include "../../key_management/X3DHKeys/EphemeralKeyPair.h"
 #include "../../key_management/KEKManager.h"
 #include "../SessionManager/SessionManager.h"
 
-// Helper function to convert std::vector<unsigned char> to QByteArray
+// convert std::vector<unsigned char> to QByteArray
 QByteArray toQByteArray(const std::vector<unsigned char>& vec) {
     return QByteArray(reinterpret_cast<const char*>(vec.data()), vec.size());
 }
 
-// Helper function to convert QByteArray to std::vector<unsigned char>
+// convert QByteArray to std::vector<unsigned char>
 std::vector<unsigned char> toStdVector(const QByteArray& qba) {
     return std::vector<unsigned char>(
         reinterpret_cast<const unsigned char*>(qba.constData()),
@@ -36,7 +35,7 @@ std::vector<unsigned char> toStdVector(const QByteArray& qba) {
 }
 
 
-//constructor
+
 RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::RecievedFilesPage),
@@ -44,29 +43,27 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
 {
 
     ui->setupUi(this);
-    // Initialize sodium if it hasn't been already (though DecryptionManager also does it)
+    // Initialize sodium if it hasn't been already
     if (sodium_init() < 0) {
         qCritical() << "Failed to initialize libsodium in RecievedFilesPage";
-        // Potentially disable functionality or show an error
     }
 
-    // Setup for ReceivedFilesManager
-    m_receivedFilesManager->setServerUrl("https://leftovers.gobbler.info"); // Set your server URL
+
+    m_receivedFilesManager->setServerUrl("https://leftovers.gobbler.info");
     connect(m_receivedFilesManager, &ReceivedFilesManager::unreadMessagesReceived,
             this, &RecievedFilesPage::handleUnreadMessagesResponse);
     connect(m_receivedFilesManager, &ReceivedFilesManager::fetchMessagesFailed,
             this, &RecievedFilesPage::handleFetchMessagesError);
-    // Setup for ReceivedFilesManager - Sender Keys
+    // Sender Keys
     connect(m_receivedFilesManager, &ReceivedFilesManager::senderKeysReceived,
             this, &RecievedFilesPage::handleSenderKeysResponse);
     connect(m_receivedFilesManager, &ReceivedFilesManager::fetchSenderKeysFailed,
             this, &RecievedFilesPage::handleFetchSenderKeysError);
-    // Setup for ReceivedFilesManager - File Download
+    // File Download
     connect(m_receivedFilesManager, &ReceivedFilesManager::fileDownloadSucceeded,
             this, &RecievedFilesPage::handleFileDownloadSuccess);
     connect(m_receivedFilesManager, &ReceivedFilesManager::fileDownloadFailed,
             this, &RecievedFilesPage::handleFileDownloadError);
-    // connect(m_receivedFilesManager, &ReceivedFilesManager::sslErrorsSignal, this, &SomeOtherSlotForSslErrors); // Optional: if you want to handle general SSL errors separately
 
     connect(ui->getFilesButton, &QPushButton::clicked, this, &RecievedFilesPage::on_getFilesButton_clicked);
     connect(ui->decryptButton, &QPushButton::clicked, this, &RecievedFilesPage::on_decryptButton_clicked);
@@ -74,7 +71,7 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
     connect(ui->backButton, &QPushButton::clicked, this, &RecievedFilesPage::on_backButton_clicked);
 
 
-//creates layout for scroll area
+
     if (!ui->scrollAreaWidgetContents->layout()) {
         QVBoxLayout* scrollLayout = new QVBoxLayout(ui->scrollAreaWidgetContents);
         scrollLayout->setSpacing(10);
@@ -85,7 +82,7 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
     updateButtonStates();
 
 }
-//destructor
+
 RecievedFilesPage::~RecievedFilesPage()
 {
     delete ui;
@@ -121,7 +118,7 @@ void RecievedFilesPage::on_getFilesButton_clicked()
     // Clear existing UI elements and data
     while (QLayoutItem* item = ui->scrollAreaWidgetContents->layout()->takeAt(0)) {
         if (item->widget()) {
-            item->widget()->removeEventFilter(this); // Important if event filters were installed
+            item->widget()->removeEventFilter(this);
             delete item->widget();
         }
         delete item;
@@ -133,7 +130,7 @@ void RecievedFilesPage::on_getFilesButton_clicked()
     // Provide UI feedback
     ui->getFilesButton->setEnabled(false);
     ui->getFilesButton->setText("Fetching Messages...");
-    // Consider adding a status label if you want more detailed feedback
+
 
     m_receivedFilesManager->fetchUnreadMessages();
 }
@@ -142,7 +139,7 @@ void RecievedFilesPage::on_getFilesButton_clicked()
 void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
     QFrame* box = new QFrame(ui->scrollAreaWidgetContents);
     box->setObjectName("fileBox_" + fileInfo.uuid);
-    box->setMinimumHeight(110); // Increased height for new label
+    box->setMinimumHeight(110);
     box->setStyleSheet("QFrame { background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; }");
     box->setCursor(Qt::PointingHandCursor);
     box->installEventFilter(this);
@@ -156,8 +153,8 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
 
     fileInfo.senderLabel = new QLabel("From: " + fileInfo.sender, box);
     fileInfo.senderLabel->setStyleSheet("font-size: 12px; color: #333;");
-    
-    fileInfo.typeLabel = new QLabel("Type: Unknown", box); // Initialize type label
+
+    fileInfo.typeLabel = new QLabel("Type: Unknown", box);
     fileInfo.typeLabel->setStyleSheet("font-size: 12px; color: #555;");
 
     fileInfo.statusLabel = new QLabel(fileInfo.isDecrypted ? "Status: Decrypted" : "Status: Encrypted", box);
@@ -165,7 +162,7 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
 
     boxLayout->addWidget(fileInfo.nameLabel);
     boxLayout->addWidget(fileInfo.senderLabel);
-    boxLayout->addWidget(fileInfo.typeLabel); // Add type label to layout
+    boxLayout->addWidget(fileInfo.typeLabel);
     boxLayout->addWidget(fileInfo.statusLabel);
 
     fileInfo.displayBox = box;
@@ -178,7 +175,7 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
     }
 }
 
-//handles file box selection
+
 void RecievedFilesPage::onFileBoxClicked(int index) {
     if (index < 0 || index >= receivedFiles.size()) {
         qDebug() << "Invalid file index clicked:" << index;
@@ -208,7 +205,7 @@ void RecievedFilesPage::onFileBoxClicked(int index) {
 }
 
 
-//updates enabled state and style of action buttons
+
 void RecievedFilesPage::updateButtonStates() {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
         ui->decryptButton->setEnabled(false);
@@ -222,10 +219,10 @@ void RecievedFilesPage::updateButtonStates() {
     const auto& selectedFile = receivedFiles[selectedFileIndex];
 
     // Decrypt Button (for X3DH/Metadata)
-    if (!selectedFile.isDecrypted) { // Not yet processed for X3DH/metadata
+    if (!selectedFile.isDecrypted) {
         ui->decryptButton->setEnabled(true);
         ui->decryptButton->setStyleSheet("color: white; background-color: #2196F3; border: none; border-radius: 15px; font-size: 22px;");
-    } else { // Already X3DH/metadata processed
+    } else {
         ui->decryptButton->setEnabled(false);
         ui->decryptButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
     }
@@ -234,7 +231,7 @@ void RecievedFilesPage::updateButtonStates() {
     if (selectedFile.isSavedToDisk) {
         ui->downloadButton->setEnabled(false);
         ui->downloadButton->setText("File Saved");
-        ui->downloadButton->setStyleSheet("color: #666666; background-color: #d0d0d0; border: none; border-radius: 15px; font-size: 22px;"); // Slightly different disabled style
+        ui->downloadButton->setStyleSheet("color: #666666; background-color: #d0d0d0; border: none; border-radius: 15px; font-size: 22px;");
     } else if (selectedFile.isDecrypted && !selectedFile.decryptedData.isEmpty()) { // Metadata processed AND file data decrypted
         ui->downloadButton->setEnabled(true);
         ui->downloadButton->setText("Save File");
@@ -243,11 +240,11 @@ void RecievedFilesPage::updateButtonStates() {
         ui->downloadButton->setEnabled(false);
         ui->downloadButton->setText("Download Error");
         ui->downloadButton->setStyleSheet("color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;");
-    } else if (selectedFile.isDecrypted) { // Metadata processed, file ready for encrypted download (or download failed/in progress)
+    } else if (selectedFile.isDecrypted) { // Metadata processed, file ready for encrypted download
         ui->downloadButton->setEnabled(true); // Allow clicking to initiate download if not yet downloaded
         ui->downloadButton->setText("Download Encrypted");
-        // Style differently if it's actively downloading vs. ready to download
-        // This part might need refinement based on m_receivedFilesManager state for the current file
+
+
         ui->downloadButton->setStyleSheet("color: white; background-color: #FF9800; border: none; border-radius: 15px; font-size: 22px;"); // Orange for "Download Encrypted"
     } else { // Not yet X3DH/metadata processed, so download is not an option yet
         ui->downloadButton->setEnabled(false);
@@ -256,7 +253,6 @@ void RecievedFilesPage::updateButtonStates() {
     }
 }
 
-//handles decrypt button click
 void RecievedFilesPage::on_decryptButton_clicked()
 {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
@@ -278,12 +274,11 @@ void RecievedFilesPage::on_decryptButton_clicked()
     ui->decryptButton->setEnabled(false);
     ui->decryptButton->setText("Fetching Sender Keys...");
 
-    // Request sender's keys. The rest of the decryption logic will be in handleSenderKeysResponse
     m_receivedFilesManager->requestSenderKeys(selectedFile.sender);
 }
 
 
-//handles download button click
+
 void RecievedFilesPage::on_downloadButton_clicked()
 {
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
@@ -303,18 +298,16 @@ void RecievedFilesPage::on_downloadButton_clicked()
         QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
         return;
     }
-    
+
 
 
     qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
-    
+
     ui->downloadButton->setEnabled(false);
     ui->downloadButton->setText("Downloading...");
 
     m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
     if (selectedFile.decryptedData.isEmpty()) {
-        // This case implies encrypted data has been downloaded but not yet decrypted by DEK, or decryption failed.
-        // Or, if encrypted data hasn't even been downloaded yet.
         if (!selectedFile.isDownloaded) {
             qDebug() << "Download button: Encrypted content not yet downloaded. Initiating download first.";
             if (selectedFile.actualFileUuid_.isEmpty()) {
@@ -338,9 +331,9 @@ void RecievedFilesPage::on_downloadButton_clicked()
         return;
     }
 
-    QString suggestedFileName = selectedFile.fileName; // Use the actual filename from metadata
-    QString saveFilePath = QFileDialog::getSaveFileName(this,
-                                                        tr("Save File As"),
+    QString suggestedFileName = selectedFile.fileName;
+    QString saveFilePath = QFileDialog::getSaveFileName(this, 
+                                                        tr("Save File As"), 
                                                         QDir::homePath() + "/" + suggestedFileName,
                                                         tr("All Files (*.*)"));
 
@@ -366,19 +359,19 @@ void RecievedFilesPage::on_downloadButton_clicked()
     file.close();
     qDebug() << "File" << selectedFile.fileName << "saved successfully to" << saveFilePath;
     QMessageBox::information(this, "File Saved", selectedFile.fileName + " has been saved successfully.");
-
-    selectedFile.isSavedToDisk = true; // Mark as saved
-    updateButtonStates(); // Update button state
+    
+    selectedFile.isSavedToDisk = true;
+    updateButtonStates();
 }
 
-//handles back button click
+
 void RecievedFilesPage::on_backButton_clicked()
 {
     reject();
     qDebug() << "Back button clicked, closing RecievedFilesPage.";
 }
 
-// formats file size into human readable string
+
 QString RecievedFilesPage::formatFileSize(qint64 size) {
     if (size < 1024)
         return QString("%1 bytes").arg(size);
@@ -390,12 +383,11 @@ QString RecievedFilesPage::formatFileSize(qint64 size) {
         return QString("%1 GB").arg(size / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
 }
 
-// Updates file display info
+
 void RecievedFilesPage::updateFileInfoDisplay(int index) {
     Q_UNUSED(index);
 }
 
-// New slot to handle successful message fetch
 void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverResponse)
 {
     qDebug() << "Received unread messages response from manager.";
@@ -421,7 +413,7 @@ void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverRes
     if (!rootObj.contains("messages") || !rootObj["messages"].isArray()) {
         qWarning() << "Messages JSON does not contain a 'messages' array.";
         if (rootObj.contains("message") && rootObj["message"].isString()){
-             QMessageBox::information(this, "Messages", rootObj["message"].toString()); // Display server message if no messages array (e.g. "No new messages")
+             QMessageBox::information(this, "Messages", rootObj["message"].toString()); // Display server message if no messages array
         } else {
             QMessageBox::critical(this, "Error", "Invalid server response format (no messages array).");
         }
@@ -439,10 +431,10 @@ void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverRes
         ReceivedFileInfo fileInfo;
 
         // Populate ReceivedFileInfo from msgObj
-        fileInfo.uuid = msgObj.value("message_id").toString(); // Or .toInt() then .toString()
+        fileInfo.uuid = msgObj.value("message_id").toString();
         fileInfo.sender = msgObj.value("sender_username").toString("Unknown Sender");
 
-        // For fileName, use a descriptive placeholder. Actual name is in encrypted metadata.
+
         fileInfo.fileName = QString("Encrypted File from %1").arg(fileInfo.sender);
 
         fileInfo.senderEphemeralPublicKey = QByteArray::fromBase64(msgObj.value("ephemeral_key").toString().toUtf8());
@@ -450,7 +442,7 @@ void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverRes
         fileInfo.metadataNonce = QByteArray::fromBase64(msgObj.value("encrypted_metadata_nonce").toString().toUtf8());
 
 
-        fileInfo.fileSize = 0; // Placeholder
+        fileInfo.fileSize = 0;
         fileInfo.isDecrypted = false;
         fileInfo.isDownloaded = false;
         fileInfo.index = receivedFiles.size();
@@ -458,10 +450,9 @@ void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverRes
         receivedFiles.append(fileInfo);
         createFileBox(receivedFiles.last());
     }
-    updateButtonStates(); // Update button states based on new files
+    updateButtonStates();
 }
 
-// New slot to handle errors from message fetch
 void RecievedFilesPage::handleFetchMessagesError(const QString &error)
 {
     qDebug() << "Error fetching messages:" << error;
@@ -470,15 +461,15 @@ void RecievedFilesPage::handleFetchMessagesError(const QString &error)
     QMessageBox::critical(this, "Error Fetching Messages", error);
 }
 
-// New slot to handle response for sender public keys
+
 void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverResponse)
 {
     qDebug() << "Received sender keys response.";
-    ui->decryptButton->setText("Processing Keys..."); // Update UI feedback
+    ui->decryptButton->setText("Processing Keys...");
 
     if (selectedFileIndex < 0 || selectedFileIndex >= receivedFiles.size()) {
         qWarning() << "handleSenderKeysResponse called with no file selected.";
-        ui->decryptButton->setEnabled(true); // Re-enable on error
+        ui->decryptButton->setEnabled(true);
         ui->decryptButton->setText("Decrypt File");
         QMessageBox::critical(this, "Error", "No file selected when sender keys response was received.");
         return;
@@ -501,7 +492,6 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
 
     QJsonObject keysObj = jsonDoc.object();
 
-
     if (keysObj.contains("Public Key") && keysObj["Public Key"].isString()) {
         selectedFile.senderIdentityPublicKeyEd = QByteArray::fromBase64(keysObj["Public Key"].toString().toUtf8());
         qDebug() << "Parsed Sender Identity Key (Public Key).";
@@ -509,7 +499,6 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         handleFetchSenderKeysError("Sender keys JSON missing or invalid 'Public Key'.");
         return;
     }
-
 
     
     if (selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
@@ -519,7 +508,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
 
     qDebug() << "Sender keys parsed. Proceeding with KEK retrieval and X3DH derivation for:" << selectedFile.fileName;
 
-    // --- Now, the original decryption logic from on_decryptButton_clicked --- 
+
     ui->decryptButton->setText("Deriving Session Key...");
 
         QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
@@ -531,19 +520,18 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         }
         std::vector<unsigned char> kekVector = toStdVector(kek_qba);
 
-        std::string userPackage = "leftovers.project"; 
-        std::string userId = "tempUser"; 
-        KEKManager kekManager(userPackage, userId);
-        QByteArray receiverIdentityKey;
-        QByteArray receiverSignedPrekey; // May not be strictly needed by X3DH receiver side if OPK is used
-                                         // but good to have if full bundle interaction is assumed by KEKManager or local key storage logic
+    std::string userPackage = "leftovers.project"; 
+    std::string userId = "tempUser"; 
+    KEKManager kekManager(userPackage, userId);
+    QByteArray receiverIdentityPrivEd_qba;
+    QByteArray receiverSignedPrekeyPriv_qba;
 
-        try {
-            std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
-            receiverIdentityKey = toQByteArray(receiverIdPrivVec);
 
-            std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
-            receiverSignedPrekey = toQByteArray(receiverSpkPrivVec);
+    try {
+        std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
+        receiverIdentityPrivEd_qba = toQByteArray(receiverIdPrivVec);
+        std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
+        receiverSignedPrekeyPriv_qba = toQByteArray(receiverSpkPrivVec);
 
         } catch (const std::runtime_error& e) {
         QMessageBox::critical(this, "Key Retrieval Error", "Failed to retrieve your private keys: " + QString::fromUtf8(e.what()));
@@ -551,18 +539,18 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
             return;
         }
         
-    if (receiverIdentityKey.isEmpty()) { // Only receiver ID priv key is absolutely essential for receiver X3DH
+    if (receiverIdentityPrivEd_qba.isEmpty()) {
          QMessageBox::critical(this, "Key Retrieval Error", "Your private identity key is empty after retrieval.");
          ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
             return;
         }
 
-        DecryptionManager decryptionManager;
-        selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
-            selectedFile, 
-        receiverIdentityKey,
-        receiverSignedPrekey
-        );
+    DecryptionManager decryptionManager;
+    selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
+        selectedFile, // Contains senderEphemeralPublicKey and now senderIdentityPublicKeyEd
+        receiverIdentityPrivEd_qba, 
+        receiverSignedPrekeyPriv_qba
+    );
 
         if (selectedFile.derivedDecryptionKey.isEmpty()) {
             QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
@@ -572,7 +560,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
     qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName;
     ui->decryptButton->setText("Decrypting Metadata...");
 
-    // --- Metadata Decryption ---
+    // Metadata Decryption
     selectedFile.decryptedMetadataJsonString = decryptionManager.decryptFileMetadata(
         selectedFile.encryptedMetadata,
         selectedFile.metadataNonce,
@@ -618,7 +606,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
          if (selectedFile.displayBox) {
             selectedFile.statusLabel->setText("Status: Decrypted (Key Ready)");
             selectedFile.statusLabel->setStyleSheet("color: #28a745;");
-            selectedFile.displayBox->setStyleSheet("QFrame { background-color: #d4edda; border: 2px solid #007bff; border-radius: 4px; }"); // Highlight selected and decrypted
+            selectedFile.displayBox->setStyleSheet("QFrame { background-color: #d4edda; border: 2px solid #007bff; border-radius: 4px; }");
         }
         QMessageBox::information(this, "Processing Complete", 
                                  selectedFile.fileName + " has been processed. X3DH key is derived. Metadata decryption attempted.");
@@ -626,16 +614,15 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         QMessageBox::critical(this, "Decryption Failed", "Failed to complete decryption process for " + selectedFile.fileName);
     }
     
-    ui->decryptButton->setEnabled(!selectedFile.isDecrypted); // Disable if successful
+    ui->decryptButton->setEnabled(!selectedFile.isDecrypted);
     ui->decryptButton->setText("Decrypt File");
-    updateButtonStates(); // This will correctly enable/disable download button
+    updateButtonStates();
 }
 
-// New slot to handle errors from sender key fetch
 void RecievedFilesPage::handleFetchSenderKeysError(const QString &error)
 {
     qDebug() << "Error fetching sender keys:" << error;
-    // Only re-enable if a file is still logically selected and not yet successfully processed
+    // Only re-enable if a file is still selected and not yet successfully processed
     if (selectedFileIndex >= 0 && selectedFileIndex < receivedFiles.size() && !receivedFiles[selectedFileIndex].isDecrypted) {
         ui->decryptButton->setEnabled(true); 
     }
@@ -643,11 +630,11 @@ void RecievedFilesPage::handleFetchSenderKeysError(const QString &error)
     QMessageBox::critical(this, "Error Fetching Sender Keys", error);
 }
 
-// New slot to handle successful file download
+
 void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFileBytes, const QString &file_uuid_ref)
 {
     qDebug() << "Successfully downloaded encrypted file content for UUID_ref:" << file_uuid_ref;
-    ui->downloadButton->setText("Download File"); // Reset button text
+    ui->downloadButton->setText("Download File");
 
     // Find the corresponding file in our list
     int fileIdx = -1;
@@ -660,7 +647,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
 
     if (fileIdx == -1) {
         qWarning() << "Could not find file with UUID" << file_uuid_ref << "in the list after download.";
-        // Re-enable button if it was the selected one, though this state is unusual
+        // Re-enable button if it was the selected one
         if (selectedFileIndex >=0 && selectedFileIndex < receivedFiles.size() && receivedFiles[selectedFileIndex].actualFileUuid_ == file_uuid_ref) {
             ui->downloadButton->setEnabled(true);
         }
@@ -670,13 +657,13 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
 
     ReceivedFileInfo& targetFile = receivedFiles[fileIdx];
     targetFile.encryptedData = encryptedFileBytes;
-    targetFile.isDownloaded = true; // Mark as downloaded
+    targetFile.isDownloaded = true;
 
     qDebug() << "Stored encrypted data for" << targetFile.fileName << "Size:" << targetFile.encryptedData.size();
 
     // Attempt to decrypt the file data immediately after download
     if (!targetFile.dek.isEmpty() && !targetFile.fileNonce.isEmpty()) {
-        DecryptionManager decryptionManager; // Create an instance or use a member instance
+        DecryptionManager decryptionManager;
         targetFile.decryptedData = decryptionManager.decryptFileData(
             targetFile.encryptedData,
             targetFile.dek,
@@ -690,8 +677,8 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
             if (targetFile.statusLabel) {
                 targetFile.statusLabel->setText("Status: Decrypted (Ready to Save)");
             }
-            if (targetFile.displayBox && selectedFileIndex == fileIdx) {
-                targetFile.displayBox->setStyleSheet("QFrame { background-color: #bbdefb; border: 2px solid #007bff; border-radius: 4px; }"); // Light blue for fully decrypted & ready to save
+            if (targetFile.displayBox && selectedFileIndex == fileIdx) { 
+                targetFile.displayBox->setStyleSheet("QFrame { background-color: #bbdefb; border: 2px solid #007bff; border-radius: 4px; }");
             }
         } else {
             qDebug() << "Failed to decrypt file data for:" << targetFile.fileName;
@@ -710,18 +697,11 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
         }
     }
 
-    // Update UI for the specific file if needed (e.g., status label)
-    // if (targetFile.statusLabel) { //This is now handled above based on decryption result
-    //    targetFile.statusLabel->setText("Status: Downloaded (Encrypted)");
-    // }
-    // if (targetFile.displayBox && selectedFileIndex == fileIdx) { // This is now handled above
-    //     targetFile.displayBox->setStyleSheet("QFrame { background-color: #cce5ff; border: 2px solid #007bff; border-radius: 4px; }"); // Blue-ish highlight for downloaded
-    // }
 
-    updateButtonStates(); // This will reflect the new isDownloaded state and potentially decryptedData state
+    updateButtonStates();
 }
 
-// New slot to handle file download errors
+
 void RecievedFilesPage::handleFileDownloadError(const QString &error, const QString &file_uuid_ref)
 {
     qDebug() << "Error downloading file for UUID_ref:" << file_uuid_ref << ":" << error;

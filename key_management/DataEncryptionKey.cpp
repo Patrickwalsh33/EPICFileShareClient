@@ -9,6 +9,7 @@ DataEncryptionKey::DataEncryptionKey()
         throw std::runtime_error("Failed to initialize libsodium");
     }
 
+    //uses libsodiums cryptographically secure random number generator
     randombytes_buf(key.data(), key.size());
 }
 

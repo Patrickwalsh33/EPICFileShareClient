@@ -10,13 +10,13 @@ struct DecryptedKeyData {
     std::vector<unsigned char> identityPrivateKey;
     std::vector<unsigned char> signedPreKeyPrivate;
     std::vector<unsigned char> oneTimeKeyPrivate;
-    std::vector<std::vector<unsigned char>> oneTimeKeyPrivates; // Now a vector of keys
+    std::vector<std::vector<unsigned char>> oneTimeKeyPrivates;
 };
 
 struct OneTimeKeyData {
     std::vector<unsigned char> privateKey;
     std::vector<unsigned char> publicKey;
-    int keyId; // For tracking which key this is
+    int keyId;
 };
 
 

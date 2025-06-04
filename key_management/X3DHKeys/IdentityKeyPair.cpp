@@ -2,6 +2,7 @@
 #include <sodium.h>
 #include <stdexcept>
 
+//each key is 32 bytes long
 IdentityKeyPair::IdentityKeyPair()
         : publicKey(crypto_sign_PUBLICKEYBYTES), privateKey(crypto_sign_SECRETKEYBYTES)
 {

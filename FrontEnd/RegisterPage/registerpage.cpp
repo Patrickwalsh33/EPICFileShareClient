@@ -8,11 +8,10 @@
 
 
 
-//static constants for package and user identifcation
 static const std::string package1 = "leftovers.project";
 static const std::string user1 = "tempUser";
 
-// Constructor
+
 RegisterPage::RegisterPage(QWidget *parent) :
     QDialog(parent),  //calls the parent constructor
     ui(new Ui::RegisterPage) //creates ui object
@@ -20,20 +19,17 @@ RegisterPage::RegisterPage(QWidget *parent) :
     ui->setupUi(this);
     ui->errorLabel->clear();
     ui->errorLabel->setVisible(false); // Hide error label initially
-    
-    // Initialize auth components
+
     passwordChecker = new CommonPasswordChecker();
     passwordValidator = new PasswordValidator(passwordChecker);
     userAuth = new UserAuthentication(passwordValidator, package1, user1, this);
 
-    // Connect signals
     connect(userAuth, &UserAuthentication::registrationSucceeded,
             this, &RegisterPage::onServerRegistrationSucceeded);
     connect(userAuth, &UserAuthentication::registrationFailed,
             this, &RegisterPage::onServerRegistrationFailed);
 }
 
-// Destructor
 RegisterPage::~RegisterPage()
 {
     delete ui;
@@ -42,17 +38,15 @@ RegisterPage::~RegisterPage()
     delete userAuth;
 }
 
-// Slot for handling the registerButton's clicked signal
 void RegisterPage::on_registerButton_clicked()
 {
-    qDebug() << "registerButton_clicked"; //remove this later
+    qDebug() << "registerButton_clicked";
     
     QString username = ui->usernameLineEdit->text();
     QString password = ui->passwordLineEdit->text();
     QString confirmPassword = ui->confirmPasswordLineEdit->text();
     QString errorMessage;
 
-    // Register user using the authentication service
     if (!userAuth->registerUser(username, password, confirmPassword, errorMessage)) {
         ui->errorLabel->setText(errorMessage);
         ui->errorLabel->setStyleSheet("color: red");
@@ -63,7 +57,6 @@ void RegisterPage::on_registerButton_clicked()
     ui->errorLabel->setVisible(false);
 }
 
-//slot for handling successful server registration
 void RegisterPage::onServerRegistrationSucceeded()
 {
     qDebug() << "Server registration succeeded";
@@ -72,18 +65,14 @@ void RegisterPage::onServerRegistrationSucceeded()
     ui->errorLabel->clear();
     ui->errorLabel->setVisible(false);
 
-    // Create and show login page
     LoginPage *loginDialog = new LoginPage(nullptr);
     loginDialog->setAttribute(Qt::WA_DeleteOnClose);
-    
-    // Close the registration page
+
     this->accept();
-    
-    // Show the login page
+
     loginDialog->exec();
 }
 
-//slot for handing failed server registration
 void RegisterPage::onServerRegistrationFailed(const QString &error)
 {
     qDebug() << "Server registration failed:" << error;
@@ -98,12 +87,11 @@ void RegisterPage::onServerRegistrationFailed(const QString &error)
 }
 
 
-// Slot for handling the backToLoginButton's clicked signal
 void RegisterPage::on_backToLoginButton_clicked()
 {
     qDebug() << "backToLoginButton_clicked";
     LandingPage landingDialog(nullptr);
     landingDialog.setAttribute(Qt::WA_DeleteOnClose);
     this->accept(); // Close RegisterPage
-    landingDialog.exec(); // Show LandingPage modally
+    landingDialog.exec(); // Show LandingPage
 }
