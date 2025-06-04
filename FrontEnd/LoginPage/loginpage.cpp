@@ -42,8 +42,7 @@ void LoginPage::on_loginButton_clicked(){
     UserAuthentication auth(validator, package1, user1, this);
     QString errorMsg;
     if (!userauthentication->loginUser(username, password, errorMsg)) {
-        
-        << errorMsg;
+        qDebug() << "Initial login flow setup failed synchronously:" << errorMsg;
         ui->loginButton->setEnabled(true);
         ui->errorLabel->setText(errorMsg);
         ui->errorLabel->setVisible(true);
