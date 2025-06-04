@@ -156,7 +156,7 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
 
     fileInfo.senderLabel = new QLabel("From: " + fileInfo.sender, box);
     fileInfo.senderLabel->setStyleSheet("font-size: 12px; color: #333;");
-
+    
     fileInfo.typeLabel = new QLabel("Type: Unknown", box); // Initialize type label
     fileInfo.typeLabel->setStyleSheet("font-size: 12px; color: #555;");
 
@@ -304,12 +304,7 @@ void RecievedFilesPage::on_downloadButton_clicked()
         return;
     }
     
-    if (selectedFile.isDownloaded) { // Optional: check if already downloaded
-        qDebug() << "File" << selectedFile.actualFileUuid_ << "already downloaded.";
-        QMessageBox::information(this, "Already Downloaded", "This file's encrypted content has already been downloaded.");
 
-        return;
-    }
 
     qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
     
@@ -325,7 +320,6 @@ void RecievedFilesPage::on_downloadButton_clicked()
             if (selectedFile.actualFileUuid_.isEmpty()) {
                 qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
                 QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
-                return;
             }
             qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
             ui->downloadButton->setEnabled(false);
@@ -537,8 +531,8 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         }
         std::vector<unsigned char> kekVector = toStdVector(kek_qba);
 
-        std::string userPackage = "leftovers.project";
-        std::string userId = "tempUser";
+        std::string userPackage = "leftovers.project"; 
+        std::string userId = "tempUser"; 
         KEKManager kekManager(userPackage, userId);
         QByteArray receiverIdentityKey;
         QByteArray receiverSignedPrekey; // May not be strictly needed by X3DH receiver side if OPK is used
@@ -547,9 +541,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         try {
             std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
             receiverIdentityKey = toQByteArray(receiverIdPrivVec);
-        // For X3DH receiver, we might also need our signed prekey private or one-time prekey private.
-        // Assuming DecryptionManager internally handles which of our own private keys to use based on message type (e.g. if it has OPK_ID)
-        // For now, we fetch SPK_priv as it was in original logic.
+
             std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
             receiverSignedPrekey = toQByteArray(receiverSpkPrivVec);
 
@@ -567,7 +559,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
 
         DecryptionManager decryptionManager;
         selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
-        selectedFile,
+            selectedFile, 
         receiverIdentityKey,
         receiverSignedPrekey
         );
@@ -743,4 +735,4 @@ void RecievedFilesPage::handleFileDownloadError(const QString &error, const QStr
     }
     ui->downloadButton->setText("Download File");
     updateButtonStates();
-}
+} 
