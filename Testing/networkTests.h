@@ -1,6 +1,6 @@
 #pragma once
 
-#include "authenticationTests.h" // We'll reuse TestSuite and TestResult
+#include "authenticationTests.h"
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>

@@ -1,6 +1,6 @@
 #include "networkTests.h"
-#include <iostream> // For std::cout
-#include <QUuid>    // For generating unique enough usernames for testing
+#include <iostream>
+#include <QUuid>
 #include <QSslError>
 #include <QSslConfiguration>
 #include <QList>
@@ -58,7 +58,7 @@ QJsonObject networkTests::performGetRequest(const QUrl& url, QUrlQuery& queryPar
 
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec(); // Wait for the reply
+    loop.exec();
 
     httpStatusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     QByteArray responseData = reply->readAll();
@@ -182,7 +182,6 @@ void networkTests::demonstrateBasicPointers(int inputValue, int* outputValue) {
     int localVariable = inputValue;
     std::cout << "  Initial localVariable value: " << localVariable << std::endl;
 
-    //int pointer gets declared here and initialized to point to localVariable
     int* pointerLocalVar = &localVariable;
 
     //dereferences the int pointer to access localVariable's value
@@ -204,7 +203,6 @@ void networkTests::demonstratePointerArithmeticAndArrays() {
     int numbers[] = {10, 20, 30, 40, 50};
     int* pointerToArray = numbers;
 
-    //accessing the first element using pointer
     std::cout << " \n   first element: " << *pointerToArray << std::endl;
 
     pointerToArray++; // Move pointer to the next element (numbers[1])

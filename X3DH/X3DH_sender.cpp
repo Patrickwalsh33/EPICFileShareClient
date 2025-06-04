@@ -56,7 +56,7 @@ bool x3dh_sender_derive_shared_secret(
         return false;
     }
 
-    // Derive shared secret with KDF
+    // Derive shared secret with KDF (Blake2b)
     unsigned char combined[crypto_generichash_BYTES];
     crypto_generichash_state state;
     crypto_generichash_init(&state, NULL, 0, sizeof(combined));
@@ -65,6 +65,7 @@ bool x3dh_sender_derive_shared_secret(
     crypto_generichash_update(&state, dh3, sizeof(dh3));
     crypto_generichash_final(&state, combined, sizeof(combined));
 
+    //checks size of output buffer, protects from buffer overflow
     if (outLen < sizeof(combined)) {
         std::cerr << "[X3DH] Output buffer too small." << std::endl;
         return false;

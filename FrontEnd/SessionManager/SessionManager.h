@@ -9,8 +9,8 @@ private:
     QByteArray m_decryptedKEK;
     QByteArray m_accessToken;
 
-    SessionManager(); // Private constructor
-    ~SessionManager(); // Private destructor
+    SessionManager();
+    ~SessionManager();
 
 public:
     SessionManager(const SessionManager&) = delete; // No copy constructor

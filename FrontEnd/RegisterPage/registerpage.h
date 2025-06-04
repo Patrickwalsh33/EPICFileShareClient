@@ -17,7 +17,7 @@ class RegisterPage : public QDialog
 
 public:
     explicit RegisterPage(QWidget *parent = nullptr); // explicit prevents implicit type conversion i
-    ~RegisterPage(); //destructor
+    ~RegisterPage();
 
 private slots:
     void on_registerButton_clicked();

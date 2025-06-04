@@ -47,18 +47,14 @@ bool RegisterManager::sendRegistrationData(const QJsonObject& registrationData) 
         QJsonDocument jsonDoc(registrationData);
         QByteArray jsonData = jsonDoc.toJson();
 
-        // Create network request
         QNetworkRequest request(QUrl(serverUrl + "/auth/register"));
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-        // SSL configuration
         QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
         request.setSslConfiguration(sslConfig);
 
-        // Send POST request
         currentReply = networkManager->post(request, jsonData);
 
-        // Connect signals
         connect(currentReply, &QNetworkReply::finished,
                 this, &RegisterManager::handleRegistrationFinished);
         connect(currentReply, &QNetworkReply::sslErrors,

@@ -137,7 +137,7 @@ std::vector<unsigned char> KEKManager::decryptStoredPrivateIdentityKey(const std
     return decryptedIdentityKey;
 }
 
-// New function implementation
+
 std::vector<unsigned char> KEKManager::decryptStoredSignedPreKey(const std::vector<unsigned char>& kek)
 {
     keychain::Error keychainError;
@@ -154,6 +154,5 @@ std::vector<unsigned char> KEKManager::decryptStoredSignedPreKey(const std::vect
     print_hex("Decrypted Signed PreKey: ", decryptedSignedPreKey.data(), decryptedSignedPreKey.size());
     return decryptedSignedPreKey;
 }
-
 
 

@@ -34,15 +34,12 @@ UploadPage::UploadPage(QWidget *parent) :
         selectedFileIndex(static_cast<size_t>(-1)) {
     ui->setupUi(this);
 
-    // Connect usernameLineEdit
+
     connect(ui->usernameLineEdit, &QLineEdit::textChanged, this, &UploadPage::onUsernameChanged);
 
-    // Connect uploader signals
-    connect(uploader, &uploadManager::recipientKeysReceived, this, &UploadPage::handleRecipientKeysResponse);
-    // You might also want to connect recipientKeysFailed to a slot to handle errors
-    // connect(uploader, &uploadManager::recipientKeysFailed, this, &UploadPage::handleRecipientKeysError); 
 
-    // Replace the standard buttons with HoverButton
+    connect(uploader, &uploadManager::recipientKeysReceived, this, &UploadPage::handleRecipientKeysResponse);
+
     HoverButton* selectFileBtn = new HoverButton(this);
     selectFileBtn->setGeometry(ui->selectFileButton->geometry());
     selectFileBtn->setText(ui->selectFileButton->text());
@@ -101,8 +98,7 @@ UploadPage::UploadPage(QWidget *parent) :
             qDebug() << "Failed to parse successful upload response or not a JSON object. Raw response:" << serverResponse;
             QMessageBox::information(this, "Upload Success", "File uploaded, but server response was not in expected JSON format.");
         }
-        // Potentially reset UI elements or navigate away
-        updateButtonStates(); // Re-evaluate button states
+        updateButtonStates();
     });
 
     connect(uploader, &uploadManager::uploadFailed, this, [=](const QString &error) {
@@ -295,7 +291,6 @@ void UploadPage::handleRecipientKeysResponse(const QByteArray &data) {
         !this->recipientPreKeySignature_.isEmpty()) {
         
         qDebug() << "All recipient keys successfully parsed. Proceeding with encryption.";
-        // Restore button text before proceeding or after encryption is fully done in proceedWithEncryption
         ui->encryptButton->setText("Encrypt File"); 
 
         
@@ -323,7 +318,6 @@ void UploadPage::on_encryptButton_clicked()
     ui->encryptButton->setText("Fetching keys...");
 
 
-    // Call requestRecipientKeys
     uploader->requestRecipientKeys(this->currentUsername);
 
 
