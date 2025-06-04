@@ -201,9 +201,8 @@ std::vector<unsigned char> base64Decode(const std::string& encoded_string) {
 
 // Define constants for package and user
 static const std::string PACKAGE = "fileShare";
-static const std::string USER = "username";  // swap for actual username
+static const std::string USER = "username";
 static keychain::Error keychainError;
 
-//storing encrypted key + nonce
 
 

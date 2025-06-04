@@ -83,7 +83,6 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
     try
     {
 
-      //  std::vector<unsigned char> salt(crypto_pwhash_SALTBYTES); // 16 byte salt
         randombytes_buf(masterKeySalt.data(), masterKeySalt.size());
         qDebug() << "Original salt (hex):" << QByteArray(reinterpret_cast<const char*>(masterKeySalt.data()), masterKeySalt.size()).toHex();
 
@@ -102,16 +101,6 @@ bool UserAuthentication::registerUser(const QString& username, const QString& qp
         kekManager->decryptStoredUserKeys(kek); // retrieves and decrypts them here for testing
 
         kekManager->encryptKEK(masterKey, kek, kekNonce); // Creates the enkek by encrypting with the master key, this now gets stored to keychain under "Enkek"
-
-        //         auto encryptedKEK = kekManager->keyEncryptor_.loadEncryptedKey("Enkek", loadError);
-        //
-        // qDebug() << "MasterKey Derived Successfully:" << masterKey;
-        // qDebug() << "User registration successful for:" << username;
-        // qDebug() << "EN_KEK is created: " << encryptedKEK.ciphertext;
-        // qDebug() << "KEK Nonce used: " << kekNonce;
-        //
-        // originalDecryptedKEK = kekManager->decryptKEK(masterKey, encryptedKEK.ciphertext, encryptedKEK.nonce); //Testing purposes
-        // qDebug()<< "Decrypted KEK on register: " << originalDecryptedKEK;
 
 
         if (!generateAndRegisterX3DHKeys(username, kek, errorMsg)) {
@@ -219,7 +208,7 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
     }
     std::vector<unsigned char> masterKeyOnLogin;
 
-    std::vector<unsigned char> tempdecryptedKEK;        //This is for memory management
+    std::vector<unsigned char> tempdecryptedKEK;
 
 
     //validates username
@@ -244,7 +233,6 @@ bool UserAuthentication::loginUser(const QString& username, const QString& qpass
         qDebug() << "Decoded salt (hex):" << QByteArray(reinterpret_cast<const char*>(saltDecoded.data()), saltDecoded.size()).toHex();
 
 
-// Now use in master key derivation
         masterKeyOnLogin = masterKeyDerivation->deriveMaster(password, saltDecoded);
 
 
@@ -463,7 +451,7 @@ bool UserAuthentication::submitSignedChallenge(const QString &username, const QB
 
     qDebug() << "Sending challenge to :" << serverUrl;
     qDebug() << "--- RAW JSON DATA BEING SENT (HEX DUMP) ---";
-    qDebug() << jsonData.toHex(); // This will print the raw bytes as hexadecimal. No escaping here.
+    qDebug() << jsonData.toHex();
     qDebug() << "--- END RAW JSON DATA ---";
 
     // Create network request
@@ -502,7 +490,7 @@ void UserAuthentication::handleLoginResponse()
     if (currentReply->error() != QNetworkReply::NoError) {
         qDebug() << "Login Reply Error:" << currentReply->errorString();
         // Clear KEK from SessionManager on login failure after challenge was passed
-        if (currentRequestType == Login) { // Check if this was a login attempt response
+        if (currentRequestType == Login) {
             SessionManager::getInstance()->clearSessionData();
         }
     } else {
@@ -520,22 +508,21 @@ void UserAuthentication::handleLoginResponse()
             {
                 QString accessTokenQString = jsonObj["access_token"].toString();
 
-                // Step 2: Convert the QString to a QByteArray (UTF-8 encoded)
+                //Convert the QString to a QByteArray (UTF-8 encoded)
                 QByteArray accessTokenByteArray = accessTokenQString.toUtf8();
 
                 SessionManager::getInstance()->setAccessToken(accessTokenByteArray);
 
-                // Step 3: Convert the QByteArray to a std::string
+                //Convert the QByteArray to a std::string
                 std::string accessTokenStdString = accessTokenByteArray.toStdString();
 
                 std::cout << accessTokenStdString << std::endl;
 
 
                 QByteArray rawAccessToken = jsonObj["access_token"].toVariant().toByteArray();
-                // qDebug() << "Access Token:" << accessToken;
+
                 qDebug() << "Raw Access Token:" << rawAccessToken;
 
-                // m_accessToken = accessToken;
                 qDebug() << "Access token stored in member variable.";
 
                 emit loginSucceeded(m_currentUsername);
@@ -582,7 +569,7 @@ void UserAuthentication::handleNetworkError(QNetworkReply::NetworkError error)
     QString errorString = currentReply->errorString();
     qDebug() << "Network error occurred during" << (currentRequestType == Challenge ? "challenge" : "login") << ":" << errorString;
 
-    // If the error occurs during the login step (after challenge/KEK retrieval)
+
     // clear the KEK from session as login is not fully successful.
     if (currentRequestType == Login) {
         SessionManager::getInstance()->clearSessionData();

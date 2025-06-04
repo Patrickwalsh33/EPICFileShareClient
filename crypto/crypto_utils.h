@@ -18,14 +18,14 @@ struct X3DHKeyBundle {
     SignedPreKeyPair signedPreKeyPair;
     OneTimeKeyPair oneTimeKeyPair;
 
-    X3DHKeyBundle();  // Custom constructor
+    X3DHKeyBundle();
 };
 
 // Derive a symmetric key from the shared secret using libsodium KDF
 bool derive_key_from_shared_secret(
         const unsigned char* shared_secret,
         unsigned char* derived_key_out,
-        const char context[8], // must be exactly 8 bytes
+        const char context[8],
         uint64_t subkey_id = 1);
 
 // Encrypt using ChaCha20-Poly1305 IETF mode
@@ -41,10 +41,6 @@ bool decrypt_with_chacha20(
         const unsigned char key[crypto_aead_chacha20poly1305_ietf_KEYBYTES],
         const unsigned char nonce[crypto_aead_chacha20poly1305_ietf_NPUBBYTES],
         unsigned char* decrypted, unsigned long long* decrypted_len);
-
-// Function to store encrypted key + nonce
-
-// Function to load encrypted key + nonce
 
 bool decrypt_dek(
         const std::vector<unsigned char>& encryptedDek,
