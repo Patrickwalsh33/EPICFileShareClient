@@ -33,6 +33,7 @@ struct ReceivedFileInfo {
     QByteArray derivedDecryptionKey;     // The final key for decrypting file content/metadata
 
     QString decryptedMetadataJsonString; // To store the decrypted metadata
+    QString actualFileUuid_;             // To store the true UUID of the file from decrypted metadata
 
     bool isDecrypted = false;       // Status: if derivedDecryptionKey is available and metadata potentially decrypted
     bool isDownloaded = false;
@@ -71,6 +72,9 @@ private slots:
     void handleFetchMessagesError(const QString &error);
     void handleSenderKeysResponse(const QByteArray &serverResponse); // New slot for sender keys
     void handleFetchSenderKeysError(const QString &error);      // New slot for sender key errors
+    // Slots for handling file download responses
+    void handleFileDownloadSuccess(const QByteArray &encryptedFileBytes, const QString &file_uuid_ref);
+    void handleFileDownloadError(const QString &error, const QString &file_uuid_ref);
 
 private:
     Ui::RecievedFilesPage *ui;    //pointer to ui

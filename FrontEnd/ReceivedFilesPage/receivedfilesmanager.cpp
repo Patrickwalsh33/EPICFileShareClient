@@ -214,4 +214,88 @@ void ReceivedFilesManager::handleSenderKeysResponse()
 
     currentReply->deleteLater();
     currentReply = nullptr;
+}
+
+// New method to download encrypted file content
+bool ReceivedFilesManager::downloadEncryptedFile(const QString &file_uuid)
+{
+    qDebug() << "Requesting download for file UUID:" << file_uuid;
+    this->m_currentDownloadFileUuid_temp = file_uuid; // Store for use in the slot
+
+    if (serverUrl.isEmpty()) {
+        qWarning() << "Server URL is not set for file download.";
+        emit fileDownloadFailed("Server URL not configured.", file_uuid);
+        return false;
+    }
+
+    QByteArray jwtToken = SessionManager::getInstance()->getAccessToken();
+    if (jwtToken.isEmpty()) {
+        qWarning() << "JWT Token is missing. Cannot download file.";
+        emit fileDownloadFailed("Authentication token not found.", file_uuid);
+        return false;
+    }
+
+    if (file_uuid.isEmpty()) {
+        emit fileDownloadFailed("File UUID for download cannot be empty.", file_uuid);
+        return false;
+    }
+
+    if (currentReply && currentReply->isRunning()) {
+        qWarning() << "File download request already in progress. Disconnecting and aborting previous.";
+        disconnect(currentReply, nullptr, nullptr, nullptr);
+        currentReply->abort();
+        currentReply->deleteLater();
+        currentReply = nullptr;
+    }
+
+    QUrl downloadUrl(serverUrl + "/files/" + file_uuid + "/download");
+
+    QNetworkRequest request(downloadUrl);
+    request.setRawHeader("Authorization", "Bearer " + jwtToken);
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    request.setSslConfiguration(sslConfig);
+
+    qDebug() << "Downloading file from:" << downloadUrl.toString();
+    currentRequestType = DownloadEncryptedContent;
+    currentReply = networkManager->get(request);
+
+    connect(currentReply, &QNetworkReply::finished, this, &ReceivedFilesManager::handleFileDownloadResponse);
+    connect(currentReply, &QNetworkReply::sslErrors, this, &ReceivedFilesManager::handleSslErrors);
+    connect(currentReply, SIGNAL(errorOccurred(QNetworkReply::NetworkError)), 
+            this, SLOT(handleNetworkError(QNetworkReply::NetworkError)));
+
+    return true;
+}
+
+// New slot to handle the response for file download request
+void ReceivedFilesManager::handleFileDownloadResponse()
+{
+    if (!currentReply) {
+        qWarning() << "handleFileDownloadResponse called with no currentReply.";
+        // If m_currentDownloadFileUuid_temp was set, we should probably emit failure for it
+        if (!m_currentDownloadFileUuid_temp.isEmpty()) {
+             emit fileDownloadFailed("Internal error: Reply object missing.", m_currentDownloadFileUuid_temp);
+        }
+        return;
+    }
+
+    QNetworkReply::NetworkError error = currentReply->error();
+    QByteArray responseData = currentReply->readAll(); // This will be the raw encrypted file bytes
+    QString associated_uuid = this->m_currentDownloadFileUuid_temp; // Get the UUID for this request
+    this->m_currentDownloadFileUuid_temp.clear(); // Clear for next request
+
+    if (error == QNetworkReply::OperationCanceledError) {
+        qDebug() << "File download operation was canceled for UUID:" << associated_uuid;
+    } else if (error == QNetworkReply::NoError) {
+        qDebug() << "Successfully downloaded encrypted file content for UUID:" << associated_uuid << "Size:" << responseData.size();
+        emit fileDownloadSucceeded(responseData, associated_uuid);
+    } else {
+        QString errorMsg = currentReply->errorString();
+        qCritical() << "Failed to download file for UUID:" << associated_uuid << ". Error:" << errorMsg;
+        qCritical() << "Server Response (if any):" << responseData.left(200); // Log only part of binary data for errors
+        emit fileDownloadFailed(errorMsg + " Server details: " + QString::fromUtf8(responseData.left(200)), associated_uuid);
+    }
+
+    currentReply->deleteLater();
+    currentReply = nullptr;
 } 
