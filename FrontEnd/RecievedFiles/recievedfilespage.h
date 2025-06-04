@@ -17,33 +17,34 @@ class RecievedFilesPage;
 
 // Struct to hold information about each received file
 struct ReceivedFileInfo {
-    QString uuid;
-    QString fileName;
+    QString uuid; // Message ID
+    QString fileName; // Initially placeholder, then actual from metadata
     QString sender;
-    qint64 fileSize;
-    QByteArray encryptedData;       // This would be the actual encrypted file content
-    QByteArray decryptedData;       // To store data after actual decryption of content
-    QByteArray encryptedMetadata;   // Assuming metadata is also received encrypted
-    QByteArray metadataNonce;       // Nonce for metadata decryption
-    QByteArray fileNonce;           // Nonce for file content decryption (if separate)
+    qint64 fileSize; // Placeholder, actual size might be in metadata
+    bool isDecrypted; // True if X3DH key derived and metadata processed
+    bool isDownloaded; // True if encrypted file blob has been downloaded
+    QByteArray senderEphemeralPublicKey;
+    QByteArray senderIdentityPublicKeyEd; // Ed25519
+    QByteArray derivedDecryptionKey; // Result of X3DH, used for metadata decryption
+    QByteArray encryptedMetadata;
+    QByteArray metadataNonce;
+    QString decryptedMetadataJsonString;
+    QString actualFileUuid_; // UUID of the actual file, from metadata
 
-    // Keys related to X3DH and key derivation
-    QByteArray senderEphemeralPublicKey; // EK_sender_pub
-    QByteArray senderIdentityPublicKeyEd;  // ID_sender_pub_Ed (fetched or part of pre-bundle)
-    QByteArray derivedDecryptionKey;     // The final key for decrypting file content/metadata
+    // New fields for file data decryption and details
+    QByteArray dek; // Data Encryption Key, from decrypted metadata
+    QByteArray fileNonce; // Nonce for file data encryption, from decrypted metadata
+    QByteArray encryptedData; // Downloaded encrypted file content
+    QByteArray decryptedData; // Decrypted file content
+    QString mimeType; // MIME type from decrypted metadata
+    // 'fileName' will be updated to actual filename from metadata, so no separate 'actualFileName' needed here.
 
-    QString decryptedMetadataJsonString; // To store the decrypted metadata
-    QString actualFileUuid_;             // To store the true UUID of the file from decrypted metadata
-
-    bool isDecrypted = false;       // Status: if derivedDecryptionKey is available and metadata potentially decrypted
-    bool isDownloaded = false;
-    int index; // To identify the file in the QVector
-
-    // UI elements associated with this file
-    QFrame* displayBox = nullptr;
     QLabel* nameLabel = nullptr;
     QLabel* senderLabel = nullptr;
     QLabel* statusLabel = nullptr;
+    QLabel* typeLabel = nullptr; // For MIME type or file extension
+    QFrame* displayBox = nullptr;
+    int index = -1;
 };
 
 class RecievedFilesPage : public QDialog
