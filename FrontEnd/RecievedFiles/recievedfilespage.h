@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QLabel>
 #include <QFrame>
+#include "../ReceivedFilesPage/receivedfilesmanager.h"
 
 namespace Ui {
 class RecievedFilesPage;
@@ -60,10 +61,15 @@ private slots:
     void on_downloadButton_clicked();
     void onFileBoxClicked(int index); // Slot for when a file box is clicked
 
+    // Slots for handling responses from ReceivedFilesManager
+    void handleUnreadMessagesResponse(const QByteArray &serverResponse);
+    void handleFetchMessagesError(const QString &error);
+
 private:
     Ui::RecievedFilesPage *ui;
     QVector<ReceivedFileInfo> receivedFiles;
     int selectedFileIndex = -1; // Index of the currently selected file, -1 if none
+    ReceivedFilesManager *m_receivedFilesManager;
 
     void createFileBox(ReceivedFileInfo& fileInfo);
     void updateButtonStates();

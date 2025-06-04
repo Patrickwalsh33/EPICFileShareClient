@@ -10,6 +10,7 @@
 #include <sodium.h>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 
 // Key Management Includes
 #include "../../key_management/X3DHKeys/IdentityKeyPair.h"
@@ -32,7 +33,8 @@ std::vector<unsigned char> toStdVector(const QByteArray& qba) {
 
 RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::RecievedFilesPage)
+    ui(new Ui::RecievedFilesPage),
+    m_receivedFilesManager(new ReceivedFilesManager(this))
 {
     ui->setupUi(this);
     // Initialize sodium if it hasn't been already (though DecryptionManager also does it)
@@ -40,6 +42,14 @@ RecievedFilesPage::RecievedFilesPage(QWidget *parent) :
         qCritical() << "Failed to initialize libsodium in RecievedFilesPage";
         // Potentially disable functionality or show an error
     }
+
+    // Setup for ReceivedFilesManager
+    m_receivedFilesManager->setServerUrl("https://leftovers.gobbler.info"); // Set your server URL
+    connect(m_receivedFilesManager, &ReceivedFilesManager::unreadMessagesReceived, 
+            this, &RecievedFilesPage::handleUnreadMessagesResponse);
+    connect(m_receivedFilesManager, &ReceivedFilesManager::fetchMessagesFailed, 
+            this, &RecievedFilesPage::handleFetchMessagesError);
+    // connect(m_receivedFilesManager, &ReceivedFilesManager::sslErrorsSignal, this, &SomeOtherSlotForSslErrors); // Optional: if you want to handle general SSL errors separately
 
     connect(ui->getFilesButton, &QPushButton::clicked, this, &RecievedFilesPage::on_getFilesButton_clicked);
     connect(ui->decryptButton, &QPushButton::clicked, this, &RecievedFilesPage::on_decryptButton_clicked);
@@ -82,82 +92,26 @@ static EphemeralKeyPair testSenderEphemeralKeys;
 
 void RecievedFilesPage::on_getFilesButton_clicked()
 {
-    qDebug() << "Get Files button clicked. Populating with VALID dummy files and keys.";
+    qDebug() << "Get Files button clicked. Fetching from server.";
+    
+    // Clear existing UI elements and data
     while (QLayoutItem* item = ui->scrollAreaWidgetContents->layout()->takeAt(0)) {
         if (item->widget()) {
-            item->widget()->removeEventFilter(this);
+            item->widget()->removeEventFilter(this); // Important if event filters were installed
             delete item->widget();
         }
         delete item;
     }
     receivedFiles.clear();
     selectedFileIndex = -1;
+    updateButtonStates(); // Reset buttons
 
-    // Use the statically generated sender keys
-    QByteArray senderEphemeralPub = toQByteArray(testSenderEphemeralKeys.getPublicKey());
-    QByteArray senderIdentityPubEd = toQByteArray(testSenderIdentityKeys.getPublicKey());
+    // Provide UI feedback
+    ui->getFilesButton->setEnabled(false);
+    ui->getFilesButton->setText("Fetching Messages...");
+    // Consider adding a status label if you want more detailed feedback
 
-    qDebug() << "Test Sender Ephemeral Public Key (first 5 bytes):" << senderEphemeralPub.left(5).toHex();
-    qDebug() << "Test Sender Identity Public Key (first 5 bytes):" << senderIdentityPubEd.left(5).toHex();
-
-    // Dummy metadata for testing - in a real scenario, this is fetched from the server
-    // For this test, we will create a dummy JSON, encrypt it with a *known* key
-    // (e.g., the sender's derived X3DH key if we were simulating that fully here, or just a placeholder).
-    // To keep it simple for *this specific step* of plumbing the decryption call,
-    // we'll use very basic placeholder byte arrays for encryptedMetadata and metadataNonce.
-    // The actual test of decryption correctness will come when real encrypted data is processed.
-
-    QByteArray placeholderEncryptedMetadata(60 + crypto_aead_chacha20poly1305_ietf_ABYTES, 'E'); // Placeholder for ~60 bytes of plaintext + MAC
-    QByteArray placeholderMetadataNonce(crypto_aead_chacha20poly1305_ietf_NPUBBYTES, 'N');
-
-    // Create file 1
-    ReceivedFileInfo file1;
-    file1.fileName = "Document1.enc";
-    file1.sender = "UserA";
-    file1.fileSize = 1024 * 5;
-    file1.isDecrypted = false;
-    file1.uuid = "uuid1-doc";
-    file1.senderEphemeralPublicKey = senderEphemeralPub;
-    file1.senderIdentityPublicKeyEd = senderIdentityPubEd;
-    // --- Dummy Encrypted Metadata & Nonce ---
-    file1.encryptedMetadata = placeholderEncryptedMetadata; 
-    file1.metadataNonce = placeholderMetadataNonce;
-    // --- End Dummy ---
-    file1.index = receivedFiles.size();
-    receivedFiles.append(file1);
-    createFileBox(receivedFiles.last());
-
-    // Create file 2
-    ReceivedFileInfo file2;
-    file2.fileName = "Picture.jpg.enc";
-    file2.sender = "UserB";
-    file2.fileSize = 1024 * 1024 * 2;
-    file2.isDecrypted = false;
-    file2.uuid = "uuid2-pic";
-    file2.senderEphemeralPublicKey = senderEphemeralPub; 
-    file2.senderIdentityPublicKeyEd = senderIdentityPubEd;
-    file2.encryptedMetadata = QByteArray(80 + crypto_aead_chacha20poly1305_ietf_ABYTES, 'P'); // Different placeholder
-    file2.metadataNonce = placeholderMetadataNonce; // Can reuse nonce for dummy data if data is different
-    file2.index = receivedFiles.size();
-    receivedFiles.append(file2);
-    createFileBox(receivedFiles.last());
-
-    // Create file 3
-    ReceivedFileInfo file3;
-    file3.fileName = "Archive.zip.enc";
-    file3.sender = "UserC";
-    file3.fileSize = 1024 * 1024 * 15;
-    file3.isDecrypted = false;
-    file3.uuid = "uuid3-arc";
-    file3.senderEphemeralPublicKey = senderEphemeralPub;
-    file3.senderIdentityPublicKeyEd = senderIdentityPubEd;
-    file3.encryptedMetadata = QByteArray(70 + crypto_aead_chacha20poly1305_ietf_ABYTES, 'A'); // Yet another placeholder
-    file3.metadataNonce = placeholderMetadataNonce;
-    file3.index = receivedFiles.size();
-    receivedFiles.append(file3);
-    createFileBox(receivedFiles.last());
-    
-    updateButtonStates();
+    m_receivedFilesManager->fetchUnreadMessages();
 }
 
 void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
@@ -401,4 +355,83 @@ QString RecievedFilesPage::formatFileSize(qint64 size) {
 
 void RecievedFilesPage::updateFileInfoDisplay(int index) {
     Q_UNUSED(index);
+}
+
+// New slot to handle successful message fetch
+void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverResponse)
+{
+    qDebug() << "Received unread messages response from manager.";
+    ui->getFilesButton->setEnabled(true);
+    ui->getFilesButton->setText("Get Files");
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(serverResponse, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse messages JSON:" << parseError.errorString();
+        QMessageBox::critical(this, "Error", "Failed to parse server response for messages.");
+        return;
+    }
+
+    if (!jsonDoc.isObject()) {
+        qWarning() << "Messages JSON is not an object.";
+        QMessageBox::critical(this, "Error", "Invalid server response format (not an object).");
+        return;
+    }
+
+    QJsonObject rootObj = jsonDoc.object();
+    if (!rootObj.contains("messages") || !rootObj["messages"].isArray()) {
+        qWarning() << "Messages JSON does not contain a 'messages' array.";
+        if (rootObj.contains("message") && rootObj["message"].isString()){
+             QMessageBox::information(this, "Messages", rootObj["message"].toString()); // Display server message if no messages array (e.g. "No new messages")
+        } else {
+            QMessageBox::critical(this, "Error", "Invalid server response format (no messages array).");
+        }
+        return;
+    }
+
+    QJsonArray messagesArray = rootObj["messages"].toArray();
+    if (messagesArray.isEmpty()) {
+        QMessageBox::information(this, "Inbox", "No new messages found.");
+        return;
+    }
+
+    for (const QJsonValue &msgValue : messagesArray) {
+        QJsonObject msgObj = msgValue.toObject();
+        ReceivedFileInfo fileInfo;
+
+        // Populate ReceivedFileInfo from msgObj
+        fileInfo.uuid = msgObj.value("message_id").toString(); // Or .toInt() then .toString()
+        fileInfo.sender = msgObj.value("sender_username").toString("Unknown Sender");
+        
+        // For fileName, use a descriptive placeholder. Actual name is in encrypted metadata.
+        fileInfo.fileName = QString("Encrypted File from %1").arg(fileInfo.sender);
+        
+        fileInfo.senderEphemeralPublicKey = QByteArray::fromBase64(msgObj.value("ephemeral_key").toString().toUtf8());
+        fileInfo.encryptedMetadata = QByteArray::fromBase64(msgObj.value("encrypted_file_metadata").toString().toUtf8());
+        fileInfo.metadataNonce = QByteArray::fromBase64(msgObj.value("encrypted_metadata_nonce").toString().toUtf8());
+        
+        // Other fields that might be relevant or have defaults
+        fileInfo.fileSize = 0; // Placeholder, actual size might be in decrypted metadata
+        fileInfo.isDecrypted = false;
+        fileInfo.isDownloaded = false;
+        fileInfo.index = receivedFiles.size();
+        // senderIdentityPublicKeyEd will be needed for X3DH. This might need to be fetched separately 
+        // if not part of the message payload, or if you are not using a full prekey bundle system for messages.
+        // For now, leave it empty or set a placeholder if decryption logic expects it.
+        // fileInfo.senderIdentityPublicKeyEd = QByteArray(); 
+
+        receivedFiles.append(fileInfo);
+        createFileBox(receivedFiles.last());
+    }
+    updateButtonStates(); // Update button states based on new files
+}
+
+// New slot to handle errors from message fetch
+void RecievedFilesPage::handleFetchMessagesError(const QString &error)
+{
+    qDebug() << "Error fetching messages:" << error;
+    ui->getFilesButton->setEnabled(true);
+    ui->getFilesButton->setText("Get Files");
+    QMessageBox::critical(this, "Error Fetching Messages", error);
 } 
