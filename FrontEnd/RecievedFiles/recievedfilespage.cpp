@@ -131,16 +131,13 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
 
     fileInfo.senderLabel = new QLabel("From: " + fileInfo.sender, box);
     fileInfo.senderLabel->setStyleSheet("font-size: 12px; color: #333;");
-    
-    QLabel* sizeLabel = new QLabel("Size: " + formatFileSize(fileInfo.fileSize), box);
-    sizeLabel->setStyleSheet("font-size: 12px; color: #555;");
+
 
     fileInfo.statusLabel = new QLabel(fileInfo.isDecrypted ? "Status: Decrypted" : "Status: Encrypted", box);
     fileInfo.statusLabel->setStyleSheet(fileInfo.isDecrypted ? "color: #28a745;" : "color: #dc3545;");
 
     boxLayout->addWidget(fileInfo.nameLabel);
     boxLayout->addWidget(fileInfo.senderLabel);
-    boxLayout->addWidget(sizeLabel);
     boxLayout->addWidget(fileInfo.statusLabel);
 
     fileInfo.displayBox = box;

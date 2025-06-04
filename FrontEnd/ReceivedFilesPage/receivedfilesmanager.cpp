@@ -48,6 +48,16 @@ void ReceivedFilesManager::fetchUnreadMessages()
         return;
     }
 
+    // If a request is already running, disconnect its signals and abort it.
+    if (currentReply && currentReply->isRunning()) {
+        qWarning() << "Fetch unread messages request already in progress. Disconnecting and aborting previous.";
+        // Disconnect all signals from the old reply to prevent it from calling slots
+        disconnect(currentReply, nullptr, nullptr, nullptr);
+        currentReply->abort();
+        currentReply->deleteLater(); // Schedule for deletion
+        currentReply = nullptr; 
+    }
+
     QUrl inboxUrl(serverUrl + "/messages/inbox");
     QNetworkRequest request(inboxUrl);
     request.setRawHeader("Authorization", "Bearer " + jwtToken);
@@ -59,12 +69,6 @@ void ReceivedFilesManager::fetchUnreadMessages()
     request.setSslConfiguration(sslConfig);
 
     qDebug() << "Fetching unread messages from:" << inboxUrl.toString();
-
-    if (currentReply && currentReply->isRunning()) {
-        qWarning() << "Fetch unread messages request already in progress. Aborting previous.";
-        currentReply->abort();
-        // currentReply->deleteLater(); // Let the finished/error slots handle deleteLater
-    }
 
     currentReply = networkManager->get(request);
 
@@ -81,21 +85,25 @@ void ReceivedFilesManager::fetchUnreadMessages()
 void ReceivedFilesManager::handleInboxResponse()
 {
     if (!currentReply) {
-        qWarning() << "handleInboxResponse called with no currentReply.";
+        qWarning() << "handleInboxResponse called with no currentReply (or reply already handled).";
         return;
     }
 
-    QByteArray responseData = currentReply->readAll();
+    QNetworkReply::NetworkError error = currentReply->error();
+    QByteArray responseData = currentReply->readAll(); // Read data regardless of error type
 
-    if (currentReply->error() == QNetworkReply::NoError) {
+    if (error == QNetworkReply::OperationCanceledError) {
+        qDebug() << "Previous message fetch operation was canceled. No action taken.";
+        // Don't emit any success/failure signals for a deliberately aborted request.
+    } else if (error == QNetworkReply::NoError) {
         qDebug() << "Successfully fetched messages. Size:" << responseData.size();
-        qDebug() << "Response:" << responseData.left(500); // Log part of the response
+        qDebug() << "Response:" << responseData.left(500); 
         emit unreadMessagesReceived(responseData);
     } else {
         QString errorMsg = currentReply->errorString();
         qCritical() << "Failed to fetch messages. Error:" << errorMsg;
         qCritical() << "Server Response (if any):" << responseData;
-        emit fetchMessagesFailed(errorMsg + " Server details: " + responseData);
+        emit fetchMessagesFailed(errorMsg + " Server details: " + QString::fromUtf8(responseData)); // Ensure responseData is properly converted
     }
 
     currentReply->deleteLater();
