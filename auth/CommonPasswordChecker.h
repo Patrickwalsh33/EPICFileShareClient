@@ -8,15 +8,19 @@
 
 class CommonPasswordChecker {
 public:
-    CommonPasswordChecker();
+    CommonPasswordChecker(); //constructor loads password
 
     //methods for loading common passwords there in a csv file for now
     QStringList loadCommonPasswordsFromCSV();
+
+    //checks if a password is in comon passord list
     bool isCommonPassword(const QString& password);
+
+    //gets count of loaded passwords
     int getPasswordCount() const;
 
 private:
-    QStringList commonPasswords; 
+    QStringList commonPasswords;  //list of common passwords
 };
 
-#endif //COMMONPASSWORDCHECKER_H
+#endif 

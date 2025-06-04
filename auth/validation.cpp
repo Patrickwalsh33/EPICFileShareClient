@@ -16,6 +16,7 @@ bool InputSanitizer::validateInputLength(const QString& input, int minLength, in
     return true;
 }
 
+//checks for dangerous patterns
 bool InputSanitizer::containsDangerousPatterns(const QString& input){
     //common attack patterns
     QStringList dangerousPatterns = {
@@ -26,9 +27,13 @@ bool InputSanitizer::containsDangerousPatterns(const QString& input){
     
     };
 
+
+//checks both upper and lower case
     QString upperInput = input.toUpper();
     QString lowerInput = input.toLower();
 
+
+//looks for dangerous patterns
     for (const QString pattern : dangerousPatterns){
         if (upperInput.contains(pattern.toUpper()) || lowerInput.contains(pattern.toLower())){
             qDebug() << "Dangerous pattern inputed" << pattern << "in: " << input;
@@ -38,6 +43,8 @@ bool InputSanitizer::containsDangerousPatterns(const QString& input){
     return false;
 }
 
+
+//sanitizes username inout
 bool InputSanitizer::sanitizeUsername(QString& username, QString& errorMsg){
 
     username = username.trimmed(); // this removes whitespace
