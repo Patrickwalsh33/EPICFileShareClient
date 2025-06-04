@@ -259,7 +259,7 @@ void RecievedFilesPage::on_decryptButton_clicked()
         qDebug() << "Decrypt button: No file selected.";
         return;
     }
-    
+
     ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
 
     if (selectedFile.isDecrypted) {
@@ -293,18 +293,31 @@ void RecievedFilesPage::on_downloadButton_clicked()
         return;
     }
 
+    if (selectedFile.actualFileUuid_.isEmpty()) {
+        qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
+        QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
+        return;
+    }
+
+
+
+    qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
+
+    ui->downloadButton->setEnabled(false);
+    ui->downloadButton->setText("Downloading...");
+
+    m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
     if (selectedFile.decryptedData.isEmpty()) {
         if (!selectedFile.isDownloaded) {
             qDebug() << "Download button: Encrypted content not yet downloaded. Initiating download first.";
             if (selectedFile.actualFileUuid_.isEmpty()) {
                 qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
                 QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
-                return;
             }
             qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
             ui->downloadButton->setEnabled(false);
             ui->downloadButton->setText("Downloading Encrypted...");
-            m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_); 
+            m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
         } else {
              qDebug() << "Download button: File data not decrypted yet or decryption failed. Cannot save.";
              QMessageBox::warning(this, "Not Ready to Save", "File content has been downloaded but is not yet successfully decrypted. Please check status.");
@@ -498,14 +511,14 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
 
     ui->decryptButton->setText("Deriving Session Key...");
 
-    QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
-    if (kek_qba.isEmpty()) {
-        QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
-        qDebug() << "Failed to retrieve KEK from SessionManager.";
+        QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
+        if (kek_qba.isEmpty()) {
+            QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
+            qDebug() << "Failed to retrieve KEK from SessionManager.";
         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
-    }
-    std::vector<unsigned char> kekVector = toStdVector(kek_qba);
+            return;
+        }
+        std::vector<unsigned char> kekVector = toStdVector(kek_qba);
 
     std::string userPackage = "leftovers.project"; 
     std::string userId = "tempUser"; 
@@ -520,17 +533,17 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
         receiverSignedPrekeyPriv_qba = toQByteArray(receiverSpkPrivVec);
 
-    } catch (const std::runtime_error& e) {
+        } catch (const std::runtime_error& e) {
         QMessageBox::critical(this, "Key Retrieval Error", "Failed to retrieve your private keys: " + QString::fromUtf8(e.what()));
         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
-    }
+            return;
+        }
         
     if (receiverIdentityPrivEd_qba.isEmpty()) {
          QMessageBox::critical(this, "Key Retrieval Error", "Your private identity key is empty after retrieval.");
          ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
-    }
+            return;
+        }
 
     DecryptionManager decryptionManager;
     selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
@@ -539,10 +552,10 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         receiverSignedPrekeyPriv_qba
     );
 
-    if (selectedFile.derivedDecryptionKey.isEmpty()) {
-        QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
+        if (selectedFile.derivedDecryptionKey.isEmpty()) {
+            QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
+            return;
     }
     qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName;
     ui->decryptButton->setText("Decrypting Metadata...");
@@ -564,10 +577,10 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         QJsonDocument doc = QJsonDocument::fromJson(selectedFile.decryptedMetadataJsonString.toUtf8());
         if (!doc.isNull() && doc.isObject()) {
             QJsonObject jsonObj = doc.object();
-            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName); 
-            selectedFile.fileName = actualFilename; 
+            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName);
+            selectedFile.fileName = actualFilename;
             if (selectedFile.nameLabel) selectedFile.nameLabel->setText("File: " + actualFilename);
-            
+
             selectedFile.actualFileUuid_ = jsonObj.value("uuid").toString();
             qDebug() << "Stored actual file UUID from metadata:" << selectedFile.actualFileUuid_;
 
@@ -647,7 +660,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
     targetFile.isDownloaded = true;
 
     qDebug() << "Stored encrypted data for" << targetFile.fileName << "Size:" << targetFile.encryptedData.size();
-    
+
     // Attempt to decrypt the file data immediately after download
     if (!targetFile.dek.isEmpty() && !targetFile.fileNonce.isEmpty()) {
         DecryptionManager decryptionManager;
@@ -659,7 +672,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
 
         if (!targetFile.decryptedData.isEmpty()) {
             qDebug() << "Successfully decrypted file data for:" << targetFile.fileName << "Decrypted size:" << targetFile.decryptedData.size();
-            QMessageBox::information(this, "Decryption Successful", 
+            QMessageBox::information(this, "Decryption Successful",
                                      targetFile.fileName + " has been successfully decrypted and is ready to be saved.");
             if (targetFile.statusLabel) {
                 targetFile.statusLabel->setText("Status: Decrypted (Ready to Save)");
@@ -669,7 +682,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
             }
         } else {
             qDebug() << "Failed to decrypt file data for:" << targetFile.fileName;
-            QMessageBox::warning(this, "Decryption Failed", 
+            QMessageBox::warning(this, "Decryption Failed",
                                  "Could not decrypt the content of " + targetFile.fileName + ". The file might be corrupted or the key/nonce is incorrect.");
             if (targetFile.statusLabel) {
                 targetFile.statusLabel->setText("Status: Downloaded (Decryption Failed)");
@@ -677,7 +690,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
         }
     } else {
         qWarning() << "Cannot decrypt file data: DEK or file nonce is missing for" << targetFile.fileName;
-        QMessageBox::information(this, "Download Complete", 
+        QMessageBox::information(this, "Download Complete",
                                  "Encrypted content for " + targetFile.fileName + " downloaded. Metadata for decryption seems incomplete.");
         if (targetFile.statusLabel) {
             targetFile.statusLabel->setText("Status: Downloaded (Encrypted - Meta Missing)");
