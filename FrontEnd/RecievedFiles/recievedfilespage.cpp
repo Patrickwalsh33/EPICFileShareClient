@@ -156,7 +156,7 @@ void RecievedFilesPage::createFileBox(ReceivedFileInfo& fileInfo) {
 
     fileInfo.senderLabel = new QLabel("From: " + fileInfo.sender, box);
     fileInfo.senderLabel->setStyleSheet("font-size: 12px; color: #333;");
-
+    
     fileInfo.typeLabel = new QLabel("Type: Unknown", box); // Initialize type label
     fileInfo.typeLabel->setStyleSheet("font-size: 12px; color: #555;");
 
@@ -263,7 +263,7 @@ void RecievedFilesPage::on_decryptButton_clicked()
         qDebug() << "Decrypt button: No file selected.";
         return;
     }
-    
+
     ReceivedFileInfo& selectedFile = receivedFiles[selectedFileIndex];
 
     if (selectedFile.isDecrypted) {
@@ -298,6 +298,20 @@ void RecievedFilesPage::on_downloadButton_clicked()
         return;
     }
 
+    if (selectedFile.actualFileUuid_.isEmpty()) {
+        qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
+        QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
+        return;
+    }
+    
+
+
+    qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
+    
+    ui->downloadButton->setEnabled(false);
+    ui->downloadButton->setText("Downloading...");
+
+    m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
     if (selectedFile.decryptedData.isEmpty()) {
         // This case implies encrypted data has been downloaded but not yet decrypted by DEK, or decryption failed.
         // Or, if encrypted data hasn't even been downloaded yet.
@@ -306,12 +320,11 @@ void RecievedFilesPage::on_downloadButton_clicked()
             if (selectedFile.actualFileUuid_.isEmpty()) {
                 qDebug() << "Download button: Actual file UUID not found. Metadata might not have been decrypted or parsed correctly.";
                 QMessageBox::critical(this, "Error", "File UUID not found. Cannot initiate download. Ensure metadata was decrypted.");
-                return;
             }
             qDebug() << "Downloading file with actual UUID:" << selectedFile.actualFileUuid_;
             ui->downloadButton->setEnabled(false);
             ui->downloadButton->setText("Downloading Encrypted...");
-            m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_); 
+            m_receivedFilesManager->downloadEncryptedFile(selectedFile.actualFileUuid_);
         } else {
              qDebug() << "Download button: File data not decrypted yet or decryption failed. Cannot save.";
              QMessageBox::warning(this, "Not Ready to Save", "File content has been downloaded but is not yet successfully decrypted. Please check status.");
@@ -326,8 +339,8 @@ void RecievedFilesPage::on_downloadButton_clicked()
     }
 
     QString suggestedFileName = selectedFile.fileName; // Use the actual filename from metadata
-    QString saveFilePath = QFileDialog::getSaveFileName(this, 
-                                                        tr("Save File As"), 
+    QString saveFilePath = QFileDialog::getSaveFileName(this,
+                                                        tr("Save File As"),
                                                         QDir::homePath() + "/" + suggestedFileName,
                                                         tr("All Files (*.*)"));
 
@@ -353,7 +366,7 @@ void RecievedFilesPage::on_downloadButton_clicked()
     file.close();
     qDebug() << "File" << selectedFile.fileName << "saved successfully to" << saveFilePath;
     QMessageBox::information(this, "File Saved", selectedFile.fileName + " has been saved successfully.");
-    
+
     selectedFile.isSavedToDisk = true; // Mark as saved
     updateButtonStates(); // Update button state
 }
@@ -436,15 +449,11 @@ void RecievedFilesPage::handleUnreadMessagesResponse(const QByteArray &serverRes
         fileInfo.encryptedMetadata = QByteArray::fromBase64(msgObj.value("encrypted_file_metadata").toString().toUtf8());
         fileInfo.metadataNonce = QByteArray::fromBase64(msgObj.value("encrypted_metadata_nonce").toString().toUtf8());
 
-        // Other fields that might be relevant or have defaults
-        fileInfo.fileSize = 0; // Placeholder, actual size might be in decrypted metadata
+
+        fileInfo.fileSize = 0; // Placeholder
         fileInfo.isDecrypted = false;
         fileInfo.isDownloaded = false;
         fileInfo.index = receivedFiles.size();
-        // senderIdentityPublicKeyEd will be needed for X3DH. This might need to be fetched separately
-        // if not part of the message payload, or if you are not using a full prekey bundle system for messages.
-        // For now, leave it empty or set a placeholder if decryption logic expects it.
-        // fileInfo.senderIdentityPublicKeyEd = QByteArray();
 
         receivedFiles.append(fileInfo);
         createFileBox(receivedFiles.last());
@@ -491,11 +500,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
     }
 
     QJsonObject keysObj = jsonDoc.object();
-    // Assuming server returns structure like: {"Public Key": "base64IK", "Public Pre Key": "base64SPK", "Pre Key Signature": "base64Sig"}
-    // This matches the keys needed by X3DH_sender_derive_shared_secret (as receiver)
-    // and what uploadManager::handleRecipientKeysResponse parses.
-    // For X3DH as receiver, we need sender's IDKey_pub, SPK_pub, SPK_sig, and EK_pub.
-    // EK_pub is already in selectedFile.senderEphemeralPublicKey from the message.
+
 
     if (keysObj.contains("Public Key") && keysObj["Public Key"].isString()) {
         selectedFile.senderIdentityPublicKeyEd = QByteArray::fromBase64(keysObj["Public Key"].toString().toUtf8());
@@ -505,20 +510,7 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         return;
     }
 
-    // Note: The X3DH receiver function (x3dh_receiver_derive_shared_secret) will actually expect:
-    // - Our own identity private key (IDKey_priv_B)
-    // - Our own signed prekey private key (SPKey_priv_B)
-    // - Our own one-time prekey private key (OPKey_priv_B) - if used
-    // - Sender's identity public key (IDKey_pub_A) -> This is senderIdentityPublicKeyEd
-    // - Sender's ephemeral public key (EKey_pub_A) -> This is senderEphemeralPublicKey
 
-    // The bundle from /users/ usually contains the sender's signed prekey and its signature too,
-    // but these are primarily for the *sender* to use when *they* initiate X3DH with *us*.
-    // For *us* (receiver) deriving the shared secret with a message *they* sent, 
-    // we primarily need *their* IDKey_pub and *their* EKey_pub.
-    // The DecryptionManager::deriveFileDecryptionKey currently takes sender's ID key and sender's Ephemeral key.
-    // Let's ensure DecryptionManager expects the correct public keys.
-    // The provided DecryptionManager::deriveFileDecryptionKey seems to already expect this.
     
     if (selectedFile.senderIdentityPublicKeyEd.isEmpty()) {
         handleFetchSenderKeysError("Failed to extract sender identity public key.");
@@ -530,54 +522,52 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
     // --- Now, the original decryption logic from on_decryptButton_clicked --- 
     ui->decryptButton->setText("Deriving Session Key...");
 
-    QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
-    if (kek_qba.isEmpty()) {
-        QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
-        qDebug() << "Failed to retrieve KEK from SessionManager.";
+        QByteArray kek_qba = SessionManager::getInstance()->getDecryptedKEK();
+        if (kek_qba.isEmpty()) {
+            QMessageBox::critical(this, "KEK Error", "Failed to retrieve KEK. User session might be invalid. Please log in again.");
+            qDebug() << "Failed to retrieve KEK from SessionManager.";
         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
-    }
-    std::vector<unsigned char> kekVector = toStdVector(kek_qba);
+            return;
+        }
+        std::vector<unsigned char> kekVector = toStdVector(kek_qba);
 
-    std::string userPackage = "leftovers.project"; 
-    std::string userId = "tempUser"; 
-    KEKManager kekManager(userPackage, userId);
-    QByteArray receiverIdentityPrivEd_qba;
-    QByteArray receiverSignedPrekeyPriv_qba; // May not be strictly needed by X3DH receiver side if OPK is used
+        std::string userPackage = "leftovers.project"; 
+        std::string userId = "tempUser"; 
+        KEKManager kekManager(userPackage, userId);
+        QByteArray receiverIdentityKey;
+        QByteArray receiverSignedPrekey; // May not be strictly needed by X3DH receiver side if OPK is used
                                          // but good to have if full bundle interaction is assumed by KEKManager or local key storage logic
 
-    try {
-        std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
-        receiverIdentityPrivEd_qba = toQByteArray(receiverIdPrivVec);
-        // For X3DH receiver, we might also need our signed prekey private or one-time prekey private.
-        // Assuming DecryptionManager internally handles which of our own private keys to use based on message type (e.g. if it has OPK_ID)
-        // For now, we fetch SPK_priv as it was in original logic.
-        std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
-        receiverSignedPrekeyPriv_qba = toQByteArray(receiverSpkPrivVec);
+        try {
+            std::vector<unsigned char> receiverIdPrivVec = kekManager.decryptStoredPrivateIdentityKey(kekVector);
+            receiverIdentityKey = toQByteArray(receiverIdPrivVec);
 
-    } catch (const std::runtime_error& e) {
+            std::vector<unsigned char> receiverSpkPrivVec = kekManager.decryptStoredSignedPreKey(kekVector);
+            receiverSignedPrekey = toQByteArray(receiverSpkPrivVec);
+
+        } catch (const std::runtime_error& e) {
         QMessageBox::critical(this, "Key Retrieval Error", "Failed to retrieve your private keys: " + QString::fromUtf8(e.what()));
         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
-    }
+            return;
+        }
         
-    if (receiverIdentityPrivEd_qba.isEmpty()) { // Only receiver ID priv key is absolutely essential for receiver X3DH
+    if (receiverIdentityKey.isEmpty()) { // Only receiver ID priv key is absolutely essential for receiver X3DH
          QMessageBox::critical(this, "Key Retrieval Error", "Your private identity key is empty after retrieval.");
          ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
-    }
+            return;
+        }
 
-    DecryptionManager decryptionManager;
-    selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
-        selectedFile, // Contains senderEphemeralPublicKey and now senderIdentityPublicKeyEd
-        receiverIdentityPrivEd_qba, 
-        receiverSignedPrekeyPriv_qba // Pass this, DecryptionManager might choose to use it or an OPK if applicable
-    );
+        DecryptionManager decryptionManager;
+        selectedFile.derivedDecryptionKey = decryptionManager.deriveFileDecryptionKey(
+            selectedFile, 
+        receiverIdentityKey,
+        receiverSignedPrekey
+        );
 
-    if (selectedFile.derivedDecryptionKey.isEmpty()) {
-        QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
+        if (selectedFile.derivedDecryptionKey.isEmpty()) {
+            QMessageBox::critical(this, "Key Derivation Failed", "Could not derive X3DH key for " + selectedFile.fileName);
         ui->decryptButton->setEnabled(true); ui->decryptButton->setText("Decrypt File");
-        return;
+            return;
     }
     qDebug() << "Successfully derived X3DH key for:" << selectedFile.fileName;
     ui->decryptButton->setText("Decrypting Metadata...");
@@ -599,10 +589,10 @@ void RecievedFilesPage::handleSenderKeysResponse(const QByteArray &serverRespons
         QJsonDocument doc = QJsonDocument::fromJson(selectedFile.decryptedMetadataJsonString.toUtf8());
         if (!doc.isNull() && doc.isObject()) {
             QJsonObject jsonObj = doc.object();
-            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName); 
-            selectedFile.fileName = actualFilename; 
+            QString actualFilename = jsonObj.value("filename").toString(selectedFile.fileName);
+            selectedFile.fileName = actualFilename;
             if (selectedFile.nameLabel) selectedFile.nameLabel->setText("File: " + actualFilename);
-            
+
             selectedFile.actualFileUuid_ = jsonObj.value("uuid").toString();
             qDebug() << "Stored actual file UUID from metadata:" << selectedFile.actualFileUuid_;
 
@@ -683,7 +673,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
     targetFile.isDownloaded = true; // Mark as downloaded
 
     qDebug() << "Stored encrypted data for" << targetFile.fileName << "Size:" << targetFile.encryptedData.size();
-    
+
     // Attempt to decrypt the file data immediately after download
     if (!targetFile.dek.isEmpty() && !targetFile.fileNonce.isEmpty()) {
         DecryptionManager decryptionManager; // Create an instance or use a member instance
@@ -695,17 +685,17 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
 
         if (!targetFile.decryptedData.isEmpty()) {
             qDebug() << "Successfully decrypted file data for:" << targetFile.fileName << "Decrypted size:" << targetFile.decryptedData.size();
-            QMessageBox::information(this, "Decryption Successful", 
+            QMessageBox::information(this, "Decryption Successful",
                                      targetFile.fileName + " has been successfully decrypted and is ready to be saved.");
             if (targetFile.statusLabel) {
                 targetFile.statusLabel->setText("Status: Decrypted (Ready to Save)");
             }
-            if (targetFile.displayBox && selectedFileIndex == fileIdx) { 
+            if (targetFile.displayBox && selectedFileIndex == fileIdx) {
                 targetFile.displayBox->setStyleSheet("QFrame { background-color: #bbdefb; border: 2px solid #007bff; border-radius: 4px; }"); // Light blue for fully decrypted & ready to save
             }
         } else {
             qDebug() << "Failed to decrypt file data for:" << targetFile.fileName;
-            QMessageBox::warning(this, "Decryption Failed", 
+            QMessageBox::warning(this, "Decryption Failed",
                                  "Could not decrypt the content of " + targetFile.fileName + ". The file might be corrupted or the key/nonce is incorrect.");
             if (targetFile.statusLabel) {
                 targetFile.statusLabel->setText("Status: Downloaded (Decryption Failed)");
@@ -713,7 +703,7 @@ void RecievedFilesPage::handleFileDownloadSuccess(const QByteArray &encryptedFil
         }
     } else {
         qWarning() << "Cannot decrypt file data: DEK or file nonce is missing for" << targetFile.fileName;
-        QMessageBox::information(this, "Download Complete", 
+        QMessageBox::information(this, "Download Complete",
                                  "Encrypted content for " + targetFile.fileName + " downloaded. Metadata for decryption seems incomplete.");
         if (targetFile.statusLabel) {
             targetFile.statusLabel->setText("Status: Downloaded (Encrypted - Meta Missing)");

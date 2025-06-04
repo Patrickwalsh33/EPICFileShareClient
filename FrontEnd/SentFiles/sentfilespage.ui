@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Files Sent</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: white;</string>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="titleLabel">
@@ -25,36 +28,132 @@
        <bold>true</bold>
       </font>
      </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: blue; color: white; border-radius: 20px; padding: 10px;</string>
+     </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
    </item>
    <item>
-    <!-- add get method to display files sent to server -->
-    <widget class="QTableWidget" name="filesTable">
-     <property name="columnCount">
-      <number>3</number>
+    <widget class="QPushButton" name="getSentFilesButton">
+     <property name="text">
+      <string>Get Sent Files</string>
      </property>
-     <property name="rowCount">
-      <number>0</number>
+     <property name="minimumSize">
+      <size>
+       <width>300</width>
+       <height>70</height>
+      </size>
      </property>
-     <column>
-      <property name="text">
-       <string>Filename</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Date Sent</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Revoke</string>
-      </property>
-     </column>
+     <property name="font">
+      <font>
+       <pointsize>22</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: white; background-color: #4CAF50; border: none; border-radius: 15px; font-size: 22px;</string>
+     </property>
     </widget>
+   </item>
+   <item>
+    <widget class="QScrollArea" name="fileScrollArea">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>400</height>
+      </size>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">border: none; background-color: transparent;</string>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1176</width> <!-- Adjust width as necessary -->
+        <height>400</height> <!-- Adjust height as necessary -->
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="actionButtonsLayout">
+     <item>
+      <widget class="QPushButton" name="deleteButton">
+       <property name="text">
+        <string>Delete File</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>250</width>
+         <height>70</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>22</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="revokeButton">
+       <property name="text">
+        <string>Revoke Access</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>250</width>
+         <height>70</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>22</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #666666; background-color: #e0e0e0; border: none; border-radius: 15px; font-size: 22px;</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QPushButton" name="backButton">
@@ -64,11 +163,17 @@
      <property name="minimumSize">
       <size>
        <width>150</width>
-       <height>60</height>
+       <height>70</height>
       </size>
      </property>
+     <property name="font">
+        <font>
+         <pointsize>22</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
      <property name="styleSheet">
-      <string notr="true">color: white; background-color: #D32F2F; border-radius: 15px; font-size: 22px; font-weight: bold;</string>
+      <string notr="true">background-color: #D32F2F; color: white; border: 2px solid #B71C1C; border-radius: 15px; padding: 10px; font-weight: bold; font-size: 22px;</string>
      </property>
     </widget>
    </item>

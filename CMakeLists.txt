@@ -74,6 +74,8 @@ add_executable(MyQtApp
         FrontEnd/SentFiles/sentfilespage.cpp
         FrontEnd/SentFiles/sentfilespage.h
         FrontEnd/SentFiles/sentfilespage.ui
+        FrontEnd/SentFiles/sentfilesmanager.cpp
+        FrontEnd/SentFiles/sentfilesmanager.h
         FrontEnd/RecievedFiles/recievedfilespage.cpp
         FrontEnd/RecievedFiles/recievedfilespage.h
         FrontEnd/RecievedFiles/recievedfilespage.ui
@@ -88,6 +90,7 @@ add_executable(MyQtApp
         Backend/Decryption/DecryptionManager.h
         FrontEnd/ReceivedFilesPage/receivedfilesmanager.cpp
         FrontEnd/ReceivedFilesPage/receivedfilesmanager.h
+
 )
 
 target_include_directories(MyQtApp PRIVATE
