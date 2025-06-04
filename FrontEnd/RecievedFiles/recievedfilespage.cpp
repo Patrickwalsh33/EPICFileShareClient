@@ -231,7 +231,11 @@ void RecievedFilesPage::updateButtonStates() {
     }
 
     // Download/Save Button
-    if (selectedFile.isDecrypted && !selectedFile.decryptedData.isEmpty()) { // Metadata processed AND file data decrypted
+    if (selectedFile.isSavedToDisk) {
+        ui->downloadButton->setEnabled(false);
+        ui->downloadButton->setText("File Saved");
+        ui->downloadButton->setStyleSheet("color: #666666; background-color: #d0d0d0; border: none; border-radius: 15px; font-size: 22px;"); // Slightly different disabled style
+    } else if (selectedFile.isDecrypted && !selectedFile.decryptedData.isEmpty()) { // Metadata processed AND file data decrypted
         ui->downloadButton->setEnabled(true);
         ui->downloadButton->setText("Save File");
         ui->downloadButton->setStyleSheet("color: white; background-color: #4CAF50; border: none; border-radius: 15px; font-size: 22px;");
@@ -316,6 +320,11 @@ void RecievedFilesPage::on_downloadButton_clicked()
     }
 
     // At this point, selectedFile.decryptedData is populated and ready to be saved.
+    if (selectedFile.isSavedToDisk) {
+        QMessageBox::information(this, "Already Saved", selectedFile.fileName + " has already been saved to disk.");
+        return;
+    }
+
     QString suggestedFileName = selectedFile.fileName; // Use the actual filename from metadata
     QString saveFilePath = QFileDialog::getSaveFileName(this, 
                                                         tr("Save File As"), 
@@ -345,9 +354,8 @@ void RecievedFilesPage::on_downloadButton_clicked()
     qDebug() << "File" << selectedFile.fileName << "saved successfully to" << saveFilePath;
     QMessageBox::information(this, "File Saved", selectedFile.fileName + " has been saved successfully.");
     
-    // Optionally, update status or disable download button for this file further if needed
-    // For example, mark as 'saved' in ReceivedFileInfo if you want to track that.
-    // updateButtonStates(); // May not be necessary if button logic is just based on decryptedData
+    selectedFile.isSavedToDisk = true; // Mark as saved
+    updateButtonStates(); // Update button state
 }
 
 //handles back button click

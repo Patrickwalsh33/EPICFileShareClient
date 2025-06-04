@@ -38,6 +38,7 @@ struct ReceivedFileInfo {
     QByteArray decryptedData; // Decrypted file content
     QString mimeType; // MIME type from decrypted metadata
     // 'fileName' will be updated to actual filename from metadata, so no separate 'actualFileName' needed here.
+    bool isSavedToDisk = false; // True if this instance has been saved by the user
 
     QLabel* nameLabel = nullptr;
     QLabel* senderLabel = nullptr;
